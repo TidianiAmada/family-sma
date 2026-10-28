@@ -2,7 +2,10 @@
 (02 §1) : un moteur scripté, sans logique de décision, pour tester l'ordonnancement."""
 
 from collections.abc import Callable, Mapping
+from dataclasses import replace
+from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
@@ -61,3 +64,36 @@ def baseline_config() -> SimulationConfig:
 @pytest.fixture
 def scripted_engine() -> ScriptedEngine:
     return ScriptedEngine()
+
+
+# --- perception de référence (T-009)
+
+FATHER_REQUIREMENTS = {NeedKind.FOOD: Decimal("35000.00"), NeedKind.HEALTH: Decimal("3000.00")}
+
+
+def make_percept(**changes: Any) -> Percept:
+    """Perception du père au pas 0 de la trace 10 §15 (épargne 150 000, cible 1 023 000)."""
+    base = Percept(
+        step=0,
+        person_id="h0000-p0",
+        age_years=45.0,
+        needs_level={k: 1.0 for k in NeedKind},
+        active_needs=frozenset(NeedKind) - {NeedKind.EDUCATION},
+        requirements=FATHER_REQUIREMENTS,
+        amount_min={},
+        expected_grant_ratio={},
+        envelope=None,
+        habitual=None,
+        savings_gap=Decimal("873000.00"),
+        ownership_share=0.5,
+        sick_first_month=False,
+        school_enrolled=False,
+        care_need=Decimal(0),
+        sick=False,
+        cared=False,
+        employed=True,
+        savings=Decimal("150000.00"),
+        savings_target=Decimal("1023000.00"),
+        last_satisfaction={},
+    )
+    return replace(base, **changes)

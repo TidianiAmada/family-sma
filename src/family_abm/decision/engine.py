@@ -69,6 +69,14 @@ class Percept:
     ownership_share: float  # ω_i
     sick_first_month: bool
     school_enrolled: bool
+    # Compléments de 10 §7.1 requis par 10 §7.3–7.5 (décisions J13–J14)
+    care_need: Money  # coût du soin d'épisode, > 0 au premier mois seulement
+    sick: bool
+    cared: bool  # soin d'épisode obtenu
+    employed: bool  # offre de travail du DemandSet
+    savings: Money  # épargne du foyer (projection SECURITY)
+    savings_target: Money  # target_buffer_months × dépense mensuelle de référence
+    last_satisfaction: Mapping[NeedKind, float]  # sat du pas précédent (HOUSING, REST…)
 
 
 @dataclass(frozen=True, slots=True)

@@ -12,6 +12,7 @@ from family_abm.agents.household import HouseholdAgent, MemberEvent
 from family_abm.agents.person import PersonAgent
 from family_abm.config.schemas import Needs, ProfileTransition
 from family_abm.core.types import MONTHS_PER_YEAR, NeedKind, Step
+from family_abm.economy.accounts import AccountKind
 from family_abm.model.events import ModelEvent
 
 
@@ -58,14 +59,18 @@ def time1(household: HouseholdAgent, step: Step) -> list[ModelEvent]:
     """
     household.start_step()
     events = household.start_of_month(step)
+    savings = household.ledger.balance(household.account(AccountKind.HOUSEHOLD_SAVINGS))
+    target = household.savings_target()
     members = household.members
     for position in household.streams["scheduling"].permutation(len(members)):
         person = members[int(position)]
         person.econ.spent_by_need = {}
         percept = person.perceive(
             step,
-            household.state.ownership.get(person.person_id, 0.0),
-            household.requirements(person, step),
+            ownership_share=household.state.ownership.get(person.person_id, 0.0),
+            requirements=household.requirements(person, step),
+            savings=savings,
+            savings_target=target,
         )
         household.submit(person.decide(percept))
     return _logged(household, step, events)

@@ -36,6 +36,7 @@ from family_abm.decision.engine import (
     EffectiveCognitiveProfile,
     Percept,
 )
+from family_abm.economy.labor import EMPLOYED
 
 
 class PersonAgent(mesa.Agent):
@@ -89,14 +90,21 @@ class PersonAgent(mesa.Agent):
         return self.age_months / MONTHS_PER_YEAR
 
     def perceive(
-        self, step: Step, ownership_share: float, requirements: Mapping[NeedKind, Money]
+        self,
+        step: Step,
+        *,
+        ownership_share: float,
+        requirements: Mapping[NeedKind, Money],
+        savings: Money,
+        savings_target: Money,
     ) -> Percept:
-        """Perception du Temps 1 (10 §7.1).
+        """Perception du Temps 1 (10 §7.1), à partir de l'état de la personne et du contexte
+        fourni par le foyer (exigences r_k·P_t, épargne et cible d'épargne).
 
-        ``requirements`` : exigences r_k(âge)·P_t calculées par le foyer (T-008). Montants
-        minimaux (T-009), enveloppe et habitude (T-009/T-010) et écart d'épargne (T-010)
-        restent à renseigner.
+        Les montants minimaux sont calculés par le moteur (10 §7.3). Le ratio accordé passé,
+        l'enveloppe et l'habitude suivent les allocations (T-010/T-011) : neutres d'ici là.
         """
+        first_sick_month = self.phys.sick and self.phys.episode_months == 0
         return Percept(
             step=step,
             person_id=self.person_id,
@@ -108,10 +116,17 @@ class PersonAgent(mesa.Agent):
             expected_grant_ratio={need: 1.0 for need in self.needs.active},
             envelope=None,
             habitual=None,
-            savings_gap=Decimal(0),
+            savings_gap=max(Decimal(0), savings_target - savings),
             ownership_share=ownership_share,
-            sick_first_month=self.phys.sick and self.phys.episode_months == 0,
+            sick_first_month=first_sick_month,
             school_enrolled=self.school_status is SchoolStatus.ENROLLED,
+            care_need=self.phys.care_need if first_sick_month else Decimal(0),
+            sick=self.phys.sick,
+            cared=self.phys.cared,
+            employed=self.econ.employment in EMPLOYED,
+            savings=savings,
+            savings_target=savings_target,
+            last_satisfaction=dict(self.needs.satisfaction),
         )
 
     def decide(self, percept: Percept) -> DemandSet:

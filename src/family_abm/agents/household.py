@@ -75,6 +75,8 @@ class HouseholdAgent(mesa.Agent):
         self.index = index
         self.rules = rules
         self.economic = economic
+        self._price_index: dict[Step, Decimal] = {}  # P_t par pas (cache)
+        self._reference_spending: Money | None = None  # dépense du pas 0 (10 §4)
         self.state = state
         self.streams = streams
         self.ledger = ledger
@@ -103,6 +105,12 @@ class HouseholdAgent(mesa.Agent):
         self.demand_sets = {}
         self.allocations = {}
 
+    def price_index(self, step: Step) -> Decimal:
+        """``P_t`` du pas, calculé une fois (chocs de prix : T-015)."""
+        if step not in self._price_index:
+            self._price_index[step] = prices.price_index(step, self.economic)
+        return self._price_index[step]
+
     def start_of_month(self, step: Step) -> list[MemberEvent]:
         """Début du Temps 1 : santé (10 §5) puis scolarité liée à l'âge (10 §6).
 
@@ -110,7 +118,7 @@ class HouseholdAgent(mesa.Agent):
         l'exécution des allocations (T-011, 10 §9) ; ``health.care_paid_by = gov`` et les
         chocs de prix sont branchés avec les scénarios (T-015).
         """
-        p_t = prices.price_index(step, self.economic)
+        p_t = self.price_index(step)
         events: list[MemberEvent] = []
         for person in self.members:
             events.extend(self._update_health(person, p_t))
@@ -167,16 +175,14 @@ class HouseholdAgent(mesa.Agent):
         return actions.monthly_requirements(
             person.age_years,
             school_enrolled=person.school_status is SchoolStatus.ENROLLED,
-            price_index=prices.price_index(step, self.economic),
+            price_index=self.price_index(step),
             requirements=self.economic.consumption_requirements,
         )
 
     def housing_shares(self, step: Step) -> dict[PersonId, Money]:
         """Parts du coût du logement × P_t selon l'échelle OCDE modifiée (10 §4, §9)."""
         housing = self.economic.housing
-        cost = q(
-            Decimal(repr(housing.monthly_cost_household)) * prices.price_index(step, self.economic)
-        )
+        cost = q(Decimal(repr(housing.monthly_cost_household)) * self.price_index(step))
         weights = actions.equivalence_weights(
             {p.person_id: p.age_years for p in self.members},
             self.state.head_id,
@@ -186,11 +192,26 @@ class HouseholdAgent(mesa.Agent):
 
     def initial_spending(self) -> Money:
         """Dépense mensuelle du pas 0 qui tient lieu de ``spend_avg_12m`` : logement +
-        Σ (alimentation + soins de routine + frais d'éducation si inscrit), à P_0 (10 §4)."""
+        Σ (alimentation + soins de routine + frais d'éducation si inscrit), à P_0 (10 §4).
+
+        Calculée une fois, sur le foyer initial, puis conservée.
+        """
+        if self._reference_spending is not None:
+            return self._reference_spending
         total = sum(self.housing_shares(0).values(), Decimal(0))
         for person in self.members:  # « r_edu si inscrit » : sans filtre par besoin actif
             total += sum(self._all_requirements(person, 0).values(), Decimal(0))
+        self._reference_spending = total
         return total
+
+    def savings_target(self) -> Money:
+        """Cible d'épargne du foyer : ``target_buffer_months × dépense de référence``.
+
+        La dépense de référence est la dépense initiale (10 §4) ; la moyenne glissante sur
+        12 mois des consommations privées la remplace avec T-011.
+        """
+        months = Decimal(repr(self.rules.savings.target_buffer_months))
+        return q(months * self.initial_spending())
 
     def security_level(self) -> float | None:
         """Niveau courant du besoin SECURITY, commun au foyer (None si aucun membre ne l'a)."""

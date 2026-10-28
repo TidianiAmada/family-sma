@@ -1,0 +1,16 @@
+.claude-backup/
+# Python / outillage
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.import_linter_cache/
+dist/
+build/
+# Données et résultats (01 §2)
+data/raw/
+experiments/results/
+results/

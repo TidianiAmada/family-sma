@@ -1,0 +1,27 @@
+# CI rapide (90 §4) : ruff, mypy, lint-imports, pytest hors slow/perf, à chaque push.
+name: fast
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Installer
+        run: uv sync --locked
+      - name: Ruff (format)
+        run: uv run ruff format --check src tests
+      - name: Ruff (lint)
+        run: uv run ruff check src tests
+      - name: Mypy
+        run: uv run mypy src/
+      - name: Contrats de couches
+        run: uv run lint-imports
+      - name: Tests
+        run: uv run pytest -q -m "not slow and not perf"

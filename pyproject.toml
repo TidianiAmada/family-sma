@@ -1,0 +1,105 @@
+[project]
+name = "family-abm"
+version = "0.1.0"
+description = "Simulation multi-agents d'un foyer sénégalais mesurée par les National Transfer Accounts (mémoire de Master, UIDT Thiès)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "mesa>=3.0,<4",
+    "numpy>=2.0",
+    "pydantic>=2.7,<3",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+    "pyarrow>=16",
+    "duckdb>=1.0",
+]
+# Script console `family-abm` et paquet `family_abm_api` : ajoutés par T-016 et la piste B.
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "hypothesis>=6.100",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "import-linter>=2.1",
+    "types-PyYAML",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/family_abm"]
+
+# --------------------------------------------------------------------------- ruff
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["family_abm"]
+
+# --------------------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+mypy_path = "src"
+
+# --------------------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-markers", "--strict-config"]
+markers = [
+    "slow: test >= 10 s, exclu de la CI rapide (exécuté par la porte)",
+    "perf: budget de performance (01 §8), exclu de la CI rapide",
+    "v2: test propre à la version V2",
+    "v3: test propre à la version V3",
+]
+
+# --------------------------------------------------------------------------- import-linter
+# Contrats de couches : 01_ARCHITECTURE §3. Vérifiés par `uv run lint-imports`.
+[tool.importlinter]
+root_package = "family_abm"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+id = "C1"
+name = "C1: NTA en lecture seule : le modèle n'importe ni nta ni analysis"
+type = "forbidden"
+source_modules = [
+    "family_abm.agents",
+    "family_abm.decision",
+    "family_abm.cognition",
+    "family_abm.economy",
+    "family_abm.health",
+]
+forbidden_modules = ["family_abm.nta", "family_abm.analysis"]
+
+[[tool.importlinter.contracts]]
+id = "C2"
+name = "C2: Moteur indépendant : aucune dépendance au serveur"
+type = "forbidden"
+source_modules = ["family_abm"]
+forbidden_modules = ["family_abm_api", "fastapi", "sqlalchemy", "sqlmodel"]
+
+[[tool.importlinter.contracts]]
+id = "C3"
+name = "C3: Imputation séparée : nta.accounts et nta.imputation indépendants"
+type = "independence"
+modules = ["family_abm.nta.accounts", "family_abm.nta.imputation"]
+
+[[tool.importlinter.contracts]]
+id = "C4"
+name = "C4: La décision ne lit pas l'affect"
+type = "forbidden"
+source_modules = ["family_abm.decision"]
+forbidden_modules = ["family_abm.cognition.appraisal"]
+
+# C5 — Pas d'état global (aucun singleton, aucune variable de module mutable) :
+# non exprimable comme contrat d'import. Vérifié par analyse AST dans tests/architecture/
+# (90 §2.1, T-019).

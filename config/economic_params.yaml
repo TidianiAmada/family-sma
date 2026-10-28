@@ -10,7 +10,7 @@ default_wage_key: young_adult    # salaire des membres sans wage_key (10 §20.3,
 wage_growth_annual: 0.02
 income_shocks:
   formal:   { p_loss_monthly: 0.004, p_find_monthly: 0.05 }
-  informal: { p_loss_monthly: 0.010, p_find_monthly: 0.10, volatility: 0.15 }  # revenu informel ~ LogNormal(0, σ)
+  informal: { p_loss_monthly: 0.010, p_find_monthly: 0.10, volatility: 0.15 }  # revenu informel × m, m ~ LogNormal(−σ²/2, σ), E[m] = 1 (10 §20.1)
   find_formal_share: 0.2         # part des retours à l'emploi qui sont formels
 tax:
   formal_rate: 0.10              # PLACEHOLDER

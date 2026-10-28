@@ -62,6 +62,8 @@ class EconomicState:
     spent_by_need: dict[NeedKind, Money] = field(default_factory=dict)  # remis à zéro au Temps 1
     months_unemployed: int = 0
     months_employed: int = 0
+    # secteur du dernier emploi (formel ou informel) ; None = jamais employé (10 §3)
+    last_sector: EmploymentStatus | None = None
     in_mutuelle: bool = False  # V3
     in_tontine: bool = False  # V3
 

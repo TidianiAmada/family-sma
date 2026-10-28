@@ -14,3 +14,4 @@ build/
 data/raw/
 experiments/results/
 results/
+.claude/scheduled_tasks.lock

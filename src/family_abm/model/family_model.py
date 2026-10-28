@@ -37,6 +37,7 @@ from family_abm.core.types import (
 )
 from family_abm.decision.engine import DecisionEngine
 from family_abm.economy.accounts import OPENING_STEP, AccountId, AccountKind, FlowCategory
+from family_abm.economy.labor import EMPLOYED
 from family_abm.economy.ledger import Ledger
 from family_abm.model import scheduler
 from family_abm.model.events import ModelEvent
@@ -44,8 +45,6 @@ from family_abm.model.scheduler import Phase
 
 type PhaseObserver = Callable[[Step, Phase, HouseholdId | None], None]
 """Observateur de l'ordonnancement : (pas, temps, foyer ou None pour un temps global)."""
-
-EMPLOYED = frozenset({EmploymentStatus.EMPLOYED_FORMAL, EmploymentStatus.EMPLOYED_INFORMAL})
 
 
 class FamilyModel(mesa.Model):
@@ -88,6 +87,7 @@ class FamilyModel(mesa.Model):
             household_id=household_id,
             index=index,
             rules=rules,
+            economic=self.config.economic_params,
             state=state,
             streams=self.streams.for_household(index),
             ledger=self.ledger,
@@ -134,6 +134,7 @@ class FamilyModel(mesa.Model):
                 wage_monthly=q(economic.wages[wage_key] * economic.wage_scale),
                 labor_supply=1.0 if member.employment in EMPLOYED else 0.0,
                 pooling_rate=pooling_rate,
+                last_sector=member.employment if member.employment in EMPLOYED else None,
             ),
             phys=PhysicalState(health=1.0),
             # level initial = 1 ; SECURITY = sat_security,0 est posé par T-008 (10 §4).
@@ -182,7 +183,7 @@ class FamilyModel(mesa.Model):
             scheduler.time1(household, step)
         for household in self.households:
             self._phase(Phase.TIME2, household.household_id)
-            scheduler.time2(household, step)
+            self.events.extend(scheduler.time2(household, step))
         for household in self.households:
             self._phase(Phase.TIME3, household.household_id)
             scheduler.time3(household, step)

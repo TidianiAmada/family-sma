@@ -50,9 +50,18 @@ def time1(household: HouseholdAgent, step: Step) -> None:
         household.submit(person.decide(percept))
 
 
-def time2(household: HouseholdAgent, step: Step) -> None:
+def time2(household: HouseholdAgent, step: Step) -> list[ModelEvent]:
     """Temps 2 : arbitrage du foyer (revenus, mise en commun, engagements, allocation)."""
-    household.arbitrate()
+    return [
+        ModelEvent(
+            step=step,
+            type=event.type,
+            household_id=household.household_id,
+            person_id=event.person_id,
+            detail=event.detail,
+        )
+        for event in household.run_time2(step)
+    ]
 
 
 def time3(household: HouseholdAgent, step: Step) -> None:

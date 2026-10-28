@@ -54,7 +54,7 @@ Pattern visé au niveau d'un foyer : signe du LCD — positif pour le bébé, l'
 | `level_k`, `sat_k` | [0, 1] | niveau lissé et satisfaction instantanée des 6 besoins |
 | `habitual`, `last_grant_ratio_k`, `envelope` | | mémoire de travail minimale (pas précédent uniquement) |
 
-Six profils : `baby`, `child`, `adolescent`, `young_adult`, `mother`, `father` (valeurs : `config/cognitive_profiles.yaml`). Gradation : `max_alternatives` 1/2/3/5/8/8 ; H = 0/1/3/12/24/24 mois.
+Six profils : `baby`, `child`, `adolescent`, `young_adult`, `mother`, `father` (valeurs : `config/cognitive_profiles.yaml`). Gradation : `max_alternatives` 1/2/3/5/8/8 ; H = 0/1/3/12/24/24 mois. Seuls `capabilities`, `max_alternatives`, `planning_horizon`, `attended_needs`, `aspiration_init` et `impulsivity` agissent en V1 ; les autres paramètres du profil (`aspiration_adapt`, `memory`, `intention_commitment`, `discounting` en V2 ; `risk`, `stress_sensitivity` en V3) sont lus et validés au chargement mais restent sans effet (03 §3).
 
 ### 2.2 `HouseholdAgent`
 

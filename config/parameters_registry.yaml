@@ -1,0 +1,26 @@
+parameters:
+  - { path: profiles.*.aspiration_init,         bounds: [0.4, 0.9],  treatment: CALIBRATE, sa: true }
+  - { path: profiles.*.aspiration_adapt.up,     bounds: [0.0, 0.3],  treatment: CALIBRATE, sa: true }
+  - { path: profiles.*.aspiration_adapt.down,   bounds: [0.0, 0.3],  treatment: CALIBRATE, sa: true }
+  - { path: profiles.*.memory.capacity,         bounds: [5, 100],    treatment: FIX,       sa: true }
+  - { path: profiles.*.memory.decay,            bounds: [0.3, 0.8],  treatment: FIX_LIT,   sa: true }
+  - { path: profiles.*.planning_horizon,        bounds: [0, 36],     treatment: EXPLORE,   sa: true, treatment_variable_of: [E2, E9] }
+  - { path: profiles.*.max_alternatives,        bounds: [1, 10],     treatment: EXPLORE,   sa: true, treatment_variable_of: [E2, E9] }
+  - { path: profiles.*.impulsivity,             bounds: [0.0, 1.0],  treatment: FIX_LIT,   sa: true }
+  - { path: profiles.*.intention_commitment,    bounds: [0.0, 1.0],  treatment: CALIBRATE, sa: true }
+  - { path: profiles.*.discounting.beta,        bounds: [0.5, 1.0],  treatment: EXPLORE,   sa: false, treatment_variable_of: [E3] }
+  - { path: profiles.*.risk.lambda,             bounds: [1.0, 3.0],  treatment: FIX_LIT,   sa: false, treatment_variable_of: [E5] }
+  - { path: profiles.*.stress_sensitivity,      bounds: [0.0, 1.0],  treatment: CALIBRATE, sa: true }
+  - { path: household_rules.allocation.weights.*, bounds: [0.3, 1.5], treatment: CALIBRATE, sa: true }
+  - { path: household_rules.allocation.variable_weights.gamma, bounds: [0, 3], treatment: CALIBRATE, sa: true }
+  - { path: household_rules.pooling.mother,     bounds: [0.3, 1.0],  treatment: CALIBRATE, sa: true }
+  - { path: household_rules.pooling.young_adult,bounds: [0.0, 1.0],  treatment: CALIBRATE, sa: true }
+  - { path: household_rules.credit.limit_months_income, bounds: [0, 6], treatment: DIRECT, sa: true }
+  - { path: household_rules.credit.annual_rate, bounds: [0.05, 0.40], treatment: DIRECT,   sa: true }
+  - { path: economic_params.income_shocks.*.p_loss_monthly, bounds: [0.001, 0.03], treatment: DIRECT, sa: true }
+  - { path: economic_params.income_shocks.*.p_find_monthly, bounds: [0.01, 0.2],   treatment: DIRECT, sa: true }
+  - { path: economic_params.health.p_episode_monthly_by_age, scale_bounds: [0.5, 2.0], treatment: DIRECT, sa: true }
+  - { path: needs.*.persistence,                bounds: [0.3, 0.95], treatment: FIX,       sa: true }
+  - { path: affect.modulation.horizon,          bounds: [0.0, 1.0],  treatment: CALIBRATE, sa: true }
+  - { path: affect.modulation.alternatives,     bounds: [0.0, 1.0],  treatment: CALIBRATE, sa: true }
+  - { path: affect.stress.decay,                bounds: [0.05, 0.5], treatment: CALIBRATE, sa: true }

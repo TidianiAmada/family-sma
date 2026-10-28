@@ -1,0 +1,40 @@
+food:
+  tier: essential
+  divisible: true
+  persistence: 0.5               # ρ : level_t = ρ·level_{t-1} + (1−ρ)·satisfaction_t
+  active_ages: [0, 120]
+  reduced_share: 0.7             # niveau « réduit » d'un panier = 0.7 × r_k (10 §7.3)
+  amount_min_share: 0.5          # amount_min = 0.5 × r_food (10 §7.3)
+health:
+  tier: essential                # soins urgents (épisode de maladie) ; soins préventifs (routine) = other
+  divisible: false               # un épisode de soin est tout ou rien
+  persistence: 0.8
+  active_ages: [0, 120]
+  reduced_share: 0.7             # routine
+  amount_min_share: 0.0          # routine ; l'épisode est indivisible (amount_min = r)
+  sat_untreated_factor: 0.2      # malade sans soin : sat = 0.2 × min(1, routine payée / r_routine) (10 §4)
+education:
+  tier: education
+  divisible: false               # frais de scolarité mensualisés indivisibles
+  persistence: 0.9
+  active_ages: [5, 25]           # restreint en plus par SchoolStatus
+housing:
+  tier: commitment               # loyer/énergie : engagement du foyer, réparti par échelle d'équivalence
+  divisible: false
+  persistence: 0.9
+  active_ages: [0, 120]
+rest:
+  tier: other
+  divisible: true
+  persistence: 0.5
+  active_ages: [0, 120]
+  monetary: false                # sat_rest = clip(1 − labor_slope·max(0, labor_supply − labor_threshold) − fatigue, 0, 1) (10 §4)
+  labor_threshold: 0.8
+  labor_slope: 0.6
+security:
+  tier: saving
+  divisible: true
+  persistence: 0.9
+  active_ages: [18, 120]
+  monetary: true                 # satisfaction = min(1, épargne / (target_buffer_months × dépense mensuelle))
+  saving_horizons_months: [12, 24]   # options d'épargne d'un panier : écart/12, écart/24, 0 (10 §7.3)

@@ -1,0 +1,30 @@
+model:
+  version: v1                    # v1 | v2 | v3 — active les blocs correspondants
+horizon_months: 240              # D12 : 120 | 240 | cycle de vie
+seed: 42
+demography:
+  mode: fixed_cohort             # Q5 — seule valeur implémentée
+data:
+  source: synthetic              # Q6 : synthetic | nta_profiles | ehcvm
+loops:                           # bascules des boucles (S8)
+  b2: { enabled: true }          # ignoré si version < v2
+  b3: { enabled: true }          # ignoré si version < v3
+cognition:
+  bdi: { enabled: true }         # V2
+  memory: { enabled: true }      # V2
+  discounting: { enabled: false }# V2 optionnel (β-δ) — E3
+# NB (B1) : les bascules affect.enabled, risk.cpt.enabled et population.n_households
+#            vivent dans affect.yaml, risk.yaml et population.yaml, pas ici.
+checks:
+  invariants: true                   # vérification active ; violation ⇒ échec dur
+  invariant_run_sample_rate: 1.0     # fraction des runs vérifiés à CHAQUE pas (< 1 autorisé seulement après porte V1, campagnes SA/population)
+  invariant_period_unsampled: 12     # les autres runs sont vérifiés tous les N pas (les invariants ne sont jamais totalement désactivés)
+output:
+  dir: experiments/results
+  collect:
+    person_steps: true
+    household_steps: true
+    ledger: true                 # désactivable pour population > 100 foyers
+    decisions: sample            # all | sample | none — sample = foyers échantillonnés
+    decisions_sample_households: 5
+    nta: true

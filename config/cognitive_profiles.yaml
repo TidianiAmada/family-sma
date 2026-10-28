@@ -1,0 +1,83 @@
+profiles:
+  baby:
+    capabilities: [consume, seek_care]
+    max_alternatives: 1          # réactif pur : 1 alternative, horizon 0 (audit, problème 2)
+    planning_horizon: 0          # mois
+    aspiration_init: 0.60
+    aspiration_adapt: { up: 0.0, down: 0.0, min: 0.3, max: 0.9 }
+    impulsivity: 1.0
+    memory: { capacity: 0, decay: 0.5, retrieval_threshold: -1.0 }
+    intention_commitment: 0.0
+    discounting: { mode: none, beta: 1.0, delta: 1.0 }
+    risk: { lambda: 1.0, alpha: 0.88 }
+    stress_sensitivity: 0.0
+    attended_needs: [food, health, rest]
+  child:
+    capabilities: [consume, seek_care, study, rest, remember]   # mémoire simple (capacité 10) — « cognition simple ; apprentissage » (DOC §3)
+    max_alternatives: 2
+    planning_horizon: 1
+    aspiration_init: 0.60
+    aspiration_adapt: { up: 0.05, down: 0.10, min: 0.3, max: 0.9 }
+    impulsivity: 0.7
+    memory: { capacity: 10, decay: 0.5, retrieval_threshold: -1.0 }
+    intention_commitment: 0.2
+    discounting: { mode: exponential, beta: 1.0, delta: 0.99 }
+    risk: { lambda: 2.25, alpha: 0.88 }
+    stress_sensitivity: 0.2
+    attended_needs: [food, health, education, rest]
+  adolescent:
+    capabilities: [consume, seek_care, study, rest, remember, plan, appraise]
+    max_alternatives: 3
+    planning_horizon: 3
+    aspiration_init: 0.65
+    aspiration_adapt: { up: 0.10, down: 0.15, min: 0.3, max: 0.95 }
+    impulsivity: 0.6             # FIX_LIT puis EXPLORED (Steinberg)
+    memory: { capacity: 20, decay: 0.5, retrieval_threshold: -1.0 }
+    intention_commitment: 0.3
+    discounting: { mode: naive, beta: 0.7, delta: 0.995 }
+    risk: { lambda: 2.25, alpha: 0.88 }
+    stress_sensitivity: 0.5
+    attended_needs: [food, rest, education, health]
+  young_adult:
+    capabilities: [work, consume, save, seek_care, study, rest, seek_job, borrow_request,
+                   remember, plan, appraise, risk_eval, leave_household]
+    max_alternatives: 5
+    planning_horizon: 12
+    aspiration_init: 0.65
+    aspiration_adapt: { up: 0.10, down: 0.15, min: 0.3, max: 0.95 }
+    impulsivity: 0.3
+    memory: { capacity: 40, decay: 0.5, retrieval_threshold: -1.0 }
+    intention_commitment: 0.6
+    discounting: { mode: naive, beta: 0.85, delta: 0.995 }
+    risk: { lambda: 2.25, alpha: 0.88 }
+    stress_sensitivity: 0.5
+    attended_needs: [food, education, health, security, rest]
+  mother:
+    capabilities: [work, consume, save, seek_care, rest, seek_job, borrow_request,
+                   remember, plan, appraise, risk_eval]
+    max_alternatives: 8
+    planning_horizon: 24
+    aspiration_init: 0.70
+    aspiration_adapt: { up: 0.10, down: 0.15, min: 0.3, max: 0.95 }
+    impulsivity: 0.2
+    memory: { capacity: 60, decay: 0.5, retrieval_threshold: -1.0 }
+    intention_commitment: 0.8
+    discounting: { mode: sophisticated, beta: 0.95, delta: 0.995 }
+    risk: { lambda: 2.25, alpha: 0.88 }
+    stress_sensitivity: 0.6
+    attended_needs: [food, health, housing, security, rest]
+  father:
+    capabilities: [work, consume, save, seek_care, rest, seek_job, borrow_request,
+                   remember, plan, appraise, risk_eval]
+    max_alternatives: 8
+    planning_horizon: 24
+    aspiration_init: 0.70
+    aspiration_adapt: { up: 0.10, down: 0.15, min: 0.3, max: 0.95 }
+    impulsivity: 0.2
+    memory: { capacity: 60, decay: 0.5, retrieval_threshold: -1.0 }
+    intention_commitment: 0.8
+    discounting: { mode: sophisticated, beta: 0.95, delta: 0.995 }
+    risk: { lambda: 2.25, alpha: 0.88 }
+    stress_sensitivity: 0.6
+    attended_needs: [food, housing, health, security, rest]
+provenance: PLACEHOLDER          # sauf risk.lambda/alpha : FIX_LIT (Tversky & Kahneman 1992)

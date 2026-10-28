@@ -1,0 +1,65 @@
+baseline_household:              # foyer de référence (DOC §3) — âges à t0, en années
+  members:
+    - { key: father,      profile: father,      age: 45, employment: employed_formal,   wage_key: father }
+    - { key: mother,      profile: mother,      age: 40, employment: employed_informal, wage_key: mother }
+    - { key: young_adult, profile: young_adult, age: 20, employment: student,           wage_key: young_adult }
+    - { key: adolescent,  profile: adolescent,  age: 15, employment: student }
+    - { key: child,       profile: child,       age: 9,  employment: student }
+    - { key: baby,        profile: baby,        age: 1,  employment: inactive }
+  initial_assets: { pot: 50000, savings: 150000, loan: 0 }
+  head: father                   # pour l'imputation ONU uniquement
+  ownership: { father: 0.5, mother: 0.5 }   # parts ω du pot commun (attribution comportementale)
+
+pooling:                         # part du revenu du travail versée au pot
+  father: 1.0
+  mother: 0.8
+  young_adult: 0.5
+
+profile_transitions:             # le profil suit l'âge (cohorte fixe, 20 ans) — donnée, pas code
+  - { from: baby,       to: child,       at_age: 5 }
+  - { from: child,      to: adolescent,  at_age: 13 }
+  - { from: adolescent, to: young_adult, at_age: 18 }
+  # young_adult → (pas de transition dans l'horizon par défaut)
+
+allocation:
+  mode: fixed_weights            # unitary | fixed_weights | variable_weights  (E6)
+  weights:                       # poids initiaux (normalisés au chargement)
+    father: 1.0
+    mother: 1.0
+    young_adult: 0.8
+    adolescent: 0.7
+    child: 0.6
+    baby: 0.6
+  variable_weights:              # V2 : w_i = normalise(w0_i · (1 + γ · part_revenu_i))
+    gamma: 1.0
+  unitary:
+    priority_owner: father       # ordre de priorité des besoins appliqué à tous (désirs du décideur)
+  tier_order: [commitment, essential, education, other, saving]
+  rationing: weighted_proportional   # dans un palier insuffisant : au prorata poids × demande, puis plancher amount_min
+
+credit:
+  limit_months_income: 3.0       # κ
+  annual_rate: 0.18              # PLACEHOLDER — microcrédit / informel
+  min_repayment_share: 0.05      # échéance minimale = min_repayment_share × (dette_{t−1} + intérêts du mois) (G12)
+  borrow_for_tiers: [essential]  # V1 : emprunt automatique seulement pour l'essentiel
+savings:
+  annual_rate: 0.03
+  target_buffer_months: 3        # sert au besoin SECURITY
+
+separate_spheres:                # V3 — Lundberg & Pollak (1993)
+  enabled: true
+  stress_threshold: 0.6          # s*
+  enter_months: 3
+  exit_months: 3
+  hysteresis: 0.1
+  spheres:                       # qui finance quoi en régime dégradé
+    father: [housing, security]
+    mother: [food, health, education]
+  pooling_in_regime: 0.4         # pooling réduit pour tous les apporteurs
+
+young_adult_can_leave: false     # D13
+leave_rule:                      # V2, si true
+  min_age: 22
+  min_months_employed: 12
+  remittance_share: 0.1          # part du revenu envoyée au foyer d'origine (INTER_HOUSEHOLD_TRANSFER)
+provenance: PLACEHOLDER

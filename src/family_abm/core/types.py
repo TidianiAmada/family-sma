@@ -26,6 +26,8 @@ type ConfigHash = str
 
 MONEY_QUANTUM = Decimal("0.01")
 """Quantum monétaire du ``Ledger`` (convention de mesure, pas un paramètre du modèle)."""
+WEIGHT_SUM_TOLERANCE = 1e-12
+"""Tolérance de ``Σω = 1`` et ``Σ weights = 1`` (INV-10, 10 §12) : convention de mesure."""
 
 
 def q(value: Decimal | int | float | str) -> Decimal:

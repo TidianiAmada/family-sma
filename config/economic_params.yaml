@@ -1,0 +1,51 @@
+currency: XOF
+wage_scale: 1.0                  # multiplicateur appliqué à TOUS les salaires (facteur de budget_pressure, E6/E8)
+employment:
+  min_work_age: 15               # âge minimal pour passer de STUDENT/DROPPED_OUT à UNEMPLOYED (10 §3)
+wages:                           # salaire mensuel à plein temps à t0 (× wage_scale)
+  father: 250000
+  mother: 120000
+  young_adult: 60000             # quand employé
+wage_growth_annual: 0.02
+income_shocks:
+  formal:   { p_loss_monthly: 0.004, p_find_monthly: 0.05 }
+  informal: { p_loss_monthly: 0.010, p_find_monthly: 0.10, volatility: 0.15 }  # revenu informel ~ LogNormal(0, σ)
+  find_formal_share: 0.2         # part des retours à l'emploi qui sont formels
+tax:
+  formal_rate: 0.10              # PLACEHOLDER
+  informal_rate: 0.0
+prices:
+  inflation_annual: 0.02
+consumption_requirements:        # r_k(âge) : coût mensuel pour satisfaction = 1 (FCFA, prix t0)
+  food:      { by_age: [[0, 15000], [5, 22000], [13, 30000], [18, 35000], [60, 30000]] }
+  health:    { routine_by_age: [[0, 3000], [5, 2000], [18, 3000], [50, 6000]], episode_cost: [[0, 25000], [18, 40000]] }
+  education: { by_age: [[5, 8000], [12, 15000], [16, 25000], [19, 40000]] }   # privé + fournitures
+  rest:      { by_age: [[0, 0]] }    # non monétaire
+housing:
+  monthly_cost_household: 90000  # loyer + énergie, payé par le pot (COMMITMENT)
+  equivalence_scale: oecd_modified
+  equivalence_weights: { first_adult: 1.0, other_adult: 0.5, child: 0.3, adult_age: 14 }
+public:
+  inkind_by_age:                 # Cg : consommation publique en nature (PUBLIC_INKIND)
+    education: [[6, 6000], [12, 9000], [16, 12000]]   # si ENROLLED
+    health:    [[0, 2000], [5, 1000], [60, 3000]]
+  cash_transfers: []             # surchargé par le scénario family_allowance
+  # schéma d'un élément de cash_transfers :
+  #   { from_step: int, to_step: int | null, per_child_under: int | null (âge, années),
+  #     amount: FCFA/mois (par enfant éligible si per_child_under, sinon par foyer), to: pot | wallet }
+health:
+  p_episode_monthly_by_age: [[0, 0.06], [5, 0.03], [18, 0.02], [50, 0.04]]
+  episode_severity: { mean: 0.25, sd: 0.10, min: 0.05, max: 0.9 }   # perte de santé en début d'épisode (tirage tronqué)
+  recovery_with_care: 0.15       # santé regagnée / mois si soin alloué
+  recovery_without_care: 0.03
+  natural_recovery: 0.01         # récupération mensuelle hors épisode
+  recovery_tolerance: 0.05       # guérison si santé ≥ santé pré-épisode − tolérance
+  max_episode_months: 6          # durée maximale d'un épisode
+  health_min_for_work: 0.3       # h_min dans labor_capacity
+  care_paid_by: household        # household | gov — gov ⇒ soins payés en PUBLIC_INKIND (scénario free_care, via policy_change daté)
+schooling:
+  entry_age: 6
+  exit_age: { secondary: 19, tertiary: 25 }
+  drop_after_refused_months: 3   # m_drop (V1 : mécanique)
+poverty_line_per_eq: 35000       # FCFA/mois/équivalent-adulte — PLACEHOLDER (à remplacer par le seuil ANSD/EHCVM)
+provenance: PLACEHOLDER

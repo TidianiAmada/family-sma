@@ -1,0 +1,28 @@
+{
+    "installed_at":  "2026-10-28T13:43:15",
+    "source":  "D:\\family-sma\\specs",
+    "files":  [
+                  ".claude\\agents\\architecte-gardien.md",
+                  ".claude\\agents\\bibliothecaire.md",
+                  ".claude\\agents\\comptable-nta.md",
+                  ".claude\\agents\\ingenieur-interface.md",
+                  ".claude\\agents\\ingenieur-tests.md",
+                  ".claude\\agents\\methodologiste-validation.md",
+                  ".claude\\agents\\modelisateur-cognitif.md",
+                  ".claude\\agents\\redacteur-odd.md",
+                  ".claude\\agents\\relecteur-code.md",
+                  ".claude\\commands\\bilan-session.md",
+                  ".claude\\commands\\controle-regles.md",
+                  ".claude\\commands\\gate-check.md",
+                  ".claude\\commands\\implement-ticket.md",
+                  ".claude\\commands\\odd-sync.md",
+                  ".claude\\skills\\concevoir-experience\\SKILL.md",
+                  ".claude\\skills\\ecrire-invariant-nta\\SKILL.md",
+                  ".claude\\skills\\fiche-conception\\SKILL.md",
+                  ".claude\\skills\\fiche-lecture\\SKILL.md",
+                  ".claude\\skills\\figure-memoire\\SKILL.md",
+                  ".claude\\skills\\implementer-sous-modele\\SKILL.md",
+                  ".claude\\skills\\rediger-odd\\SKILL.md",
+                  ".claude\\skills\\revue-qualite\\SKILL.md"
+              ]
+}

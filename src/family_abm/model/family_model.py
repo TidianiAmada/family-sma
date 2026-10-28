@@ -94,7 +94,8 @@ class FamilyModel(mesa.Model):
         )
         for position, member in enumerate(baseline.members):
             streams = household.streams.for_member(position)
-            household.add_member(self._build_person(member, ids[member.key], household_id, streams))
+            person = self._build_person(member, ids[member.key], household_id, streams)
+            household.add_member(person, member.key)
         self._post_opening_balances(household)
         household.init_security_level()
         return household

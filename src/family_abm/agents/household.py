@@ -6,18 +6,23 @@ vérité, règle 4) et dispose de ses propres flux aléatoires (``streams``), d�
 produit la même trajectoire qu'il soit simulé seul ou dans une population (01 §7).
 """
 
-from collections.abc import Mapping, Sequence
+from collections import deque
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Literal
 
 import mesa
 
+from family_abm.agents.allocation import AllocationInput, AllocationResult, allocate
 from family_abm.agents.person import PersonAgent
 from family_abm.agents.states import EconomicState, HouseholdState
 from family_abm.config.schemas import EconomicParams, HouseholdRules
+from family_abm.core.errors import ConfigError
 from family_abm.core.rng import RngStreams
 from family_abm.core.types import (
+    MONTHS_PER_YEAR,
+    AllocationMode,
     Capability,
     EmploymentStatus,
     HouseholdId,
@@ -29,8 +34,8 @@ from family_abm.core.types import (
     q,
 )
 from family_abm.decision.engine import Allocation, DemandSet
-from family_abm.economy import actions, labor, prices
-from family_abm.economy.accounts import AccountId, AccountKind
+from family_abm.economy import actions, credit, labor, prices
+from family_abm.economy.accounts import AccountId, AccountKind, FlowCategory
 from family_abm.economy.ledger import Ledger, LedgerEntry
 from family_abm.health import health
 
@@ -43,8 +48,11 @@ class MemberEvent:
     (couches, 01 §3) ; l'ordonnanceur complète le pas et le foyer.
     """
 
-    person_id: PersonId
+    person_id: PersonId | None  # None : événement du foyer
     type: Literal[
+        "arrears_start",
+        "arrears_end",
+        "credit_limit_hit",
         "job_loss",
         "job_found",
         "health_episode",
@@ -77,16 +85,23 @@ class HouseholdAgent(mesa.Agent):
         self.economic = economic
         self._price_index: dict[Step, Decimal] = {}  # P_t par pas (cache)
         self._reference_spending: Money | None = None  # dépense du pas 0 (10 §4)
+        # income_total des 12 derniers pas (plafond de crédit, 10 §8.1)
+        self.income_history: deque[Money] = deque(maxlen=MONTHS_PER_YEAR)
+        # résultat de l'allocation : housing_paid et montants accordés, exécutés au Temps 3
+        self.last_result: AllocationResult | None = None
         self.state = state
         self.streams = streams
         self.ledger = ledger
         self.members: list[PersonAgent] = []
+        self.member_keys: dict[str, PersonId] = {}  # clé de configuration → identifiant
         self.demand_sets: dict[PersonId, DemandSet] = {}
         self.allocations: dict[PersonId, tuple[Allocation, ...]] = {}
         ledger.subscribe(self._sync_caches)
 
-    def add_member(self, person: PersonAgent) -> None:
+    def add_member(self, person: PersonAgent, member_key: str) -> None:
+        """Ajoute un membre ; ``member_key`` est sa clé dans ``baseline_household``."""
         self.members.append(person)
+        self.member_keys[member_key] = person.person_id
 
     def member(self, person_id: PersonId) -> PersonAgent:
         for person in self.members:
@@ -237,13 +252,16 @@ class HouseholdAgent(mesa.Agent):
     def run_time2(self, step: Step) -> list[MemberEvent]:
         """Temps 2 (10 §8.1) : emploi et revenus, puis mise en commun, puis arbitrage.
 
-        Livrés par T-007 : étapes 1 (transitions d'emploi, ``LABOR_INCOME``, ``TAX``) et 3c
-        (``POOLING``). Transferts publics (2) : T-015 ; intérêts (3), plafond de crédit (4),
-        engagements (5) et ``allocate()`` (6–8) : T-010.
+        1. transitions d'emploi, ``LABOR_INCOME``, ``TAX`` ; 3. intérêts ; 3c. ``POOLING`` ;
+        4. plafond de crédit ; 5. engagements ; 6. ``allocate()`` ; 7. écritures de
+        financement ; 8. allocations notifiées, arriérés. Transferts publics (2) : T-015.
         """
         net_income, events = self.pay_labor_income(step)
+        # 2. transferts publics en espèces : T-015
+        accrued = self.accrue_interest(step)
         self.pool_income(step, net_income)
-        self.arbitrate()
+        events.extend(self.arbitrate(step, accrued))
+        self.income_history.append(self._income_total(step))
         return events
 
     def pay_labor_income(self, step: Step) -> tuple[dict[PersonId, Money], list[MemberEvent]]:
@@ -295,10 +313,115 @@ class HouseholdAgent(mesa.Agent):
             amount = labor.pooled_amount(net, self.member(person_id).econ.pooling_rate)
             actions.post_pooling(self.ledger, step, self.household_id, person_id, amount)
 
-    def arbitrate(self) -> Mapping[PersonId, Sequence[Allocation]]:
-        """Arbitrage des demandes. Squelette : aucune allocation ; ``allocate()`` : T-010."""
+    def debt(self) -> Money:
+        return -self.ledger.balance(self.account(AccountKind.HOUSEHOLD_LOAN))
+
+    def accrue_interest(self, step: Step) -> Money:
+        """Étape 3 : ``ASSET_INCOME`` sur l'épargne, ``INTEREST_ACCRUED`` sur la dette du pas
+        précédent. Rend l'intérêt couru (base de l'échéance)."""
+        rules = self.rules
+        savings = self.ledger.balance(self.account(AccountKind.HOUSEHOLD_SAVINGS))
+        asset_income = credit.monthly_interest(savings, rules.savings.annual_rate)
+        accrued = credit.monthly_interest(self.debt(), rules.credit.annual_rate)
+        credit.post_interest(self.ledger, step, self.household_id, asset_income, accrued)
+        return accrued
+
+    def arbitrate(self, step: Step, accrued: Money) -> list[MemberEvent]:
+        """Étapes 4 à 8 : plafond, engagements, ``allocate()``, financement, notification."""
+        result = allocate(self._allocation_input(step, accrued))
+        credit.post_financing(
+            self.ledger,
+            step,
+            self.household_id,
+            withdrawal=result.withdrawal,
+            borrowing=result.borrowing,
+            repayment=result.repayment_paid,
+            deposit=result.deposit,
+        )
+        self.last_result = result
+        self._notify(result)
+        return self._arrears_events(result)
+
+    def _allocation_input(self, step: Step, accrued: Money) -> AllocationInput:
+        """Étapes 4–5 : plafond de crédit (revenu du travail réalisé au pas 0, J18) et
+        engagements (logement × P_t, échéance sur la dette du mois précédent + intérêts)."""
+        rules = self.rules
+        labor_income = sum(
+            (
+                e.amount
+                for e in self.ledger.entries(step, self.household_id)
+                if e.category is FlowCategory.LABOR_INCOME
+            ),
+            Decimal(0),
+        )
+        debt = self.debt()
+        self.state.credit_limit = credit.credit_limit(
+            rules.credit.limit_months_income, self.income_history, labor_income
+        )
+        return AllocationInput(
+            demands=tuple(d for ds in self.demand_sets.values() for d in ds.demands),
+            pot=self.ledger.balance(self.account(AccountKind.HOUSEHOLD_POT)),
+            savings=self.ledger.balance(self.account(AccountKind.HOUSEHOLD_SAVINGS)),
+            debt=debt,
+            credit_limit=self.state.credit_limit,
+            housing_shares=self.housing_shares(step),
+            min_repayment=credit.minimum_repayment(
+                rules.credit.min_repayment_share, debt - accrued, accrued
+            ),
+            weights=self.state.weights,
+            mode=rules.allocation.mode,
+            priority_order=self._priority_order(rules.allocation.unitary.priority_owner),
+            borrow_for_tiers=frozenset(rules.credit.borrow_for_tiers),
+        )
+
+    def _notify(self, result: AllocationResult) -> None:
+        """Étape 8 : allocations rangées par personne, dans l'ordre des identifiants."""
+        owner = {d.demand_id: d.person_id for ds in self.demand_sets.values() for d in ds.demands}
         self.allocations = {person_id: () for person_id in self.demand_sets}
-        return self.allocations
+        for allocation in result.allocations:
+            person_id = owner[allocation.demand_id]
+            self.allocations[person_id] = (*self.allocations[person_id], allocation)
+
+    def _priority_order(self, owner_key: str) -> tuple[NeedKind, ...] | None:
+        """Mode unitaire : ``attended_needs`` du membre désigné (``priority_owner``)."""
+        if self.rules.allocation.mode is not AllocationMode.UNITARY:
+            return None
+        person_id = self.member_keys.get(owner_key)
+        if person_id is None:
+            raise ConfigError(
+                f"{self.household_id} : décideur unitaire {owner_key!r} absent du foyer"
+            )
+        return self.member(person_id).profile.attended_needs
+
+    def _arrears_events(self, result: AllocationResult) -> list[MemberEvent]:
+        events: list[MemberEvent] = []
+        before = self.state.arrears_months
+        self.state.arrears_months = before + 1 if result.arrears else 0
+        if result.arrears and before == 0:
+            events.append(MemberEvent(None, "arrears_start"))
+        elif not result.arrears and before > 0:
+            events.append(MemberEvent(None, "arrears_end"))
+        if result.credit_limit_hit:
+            events.append(MemberEvent(None, "credit_limit_hit"))
+        return events
+
+    def _income_total(self, step: Step) -> Money:
+        """``income_total`` du pas (04 §2) : Yl + Ya⁺ + transferts reçus, lus au Ledger."""
+        received = {
+            FlowCategory.LABOR_INCOME,
+            FlowCategory.ASSET_INCOME,
+            FlowCategory.PUBLIC_CASH_TRANSFER,
+        }
+        inflows = {AccountKind.PERSON_WALLET, AccountKind.HOUSEHOLD_POT}
+        return sum(
+            (
+                e.amount
+                for e in self.ledger.entries(step, self.household_id)
+                if e.category in received
+                or (e.category is FlowCategory.INTER_HOUSEHOLD_TRANSFER and e.dst.kind in inflows)
+            ),
+            Decimal(0),
+        )
 
     # --- caches du Ledger
 

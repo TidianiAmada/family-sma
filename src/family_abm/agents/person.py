@@ -10,6 +10,7 @@ from decimal import Decimal
 
 import mesa
 
+from family_abm.agents.allocation import feedback
 from family_abm.agents.states import (
     AffectiveState,
     CognitiveState,
@@ -76,6 +77,7 @@ class PersonAgent(mesa.Agent):
         self.cog = cog
         self.aff = aff
         self.last_allocations: tuple[Allocation, ...] = ()
+        self.last_demand_set: DemandSet | None = None
         self._profiles = profiles
         self._engine = engine
         self.streams = streams  # flux propres à la personne (« rng » est réservé par Mesa)
@@ -101,10 +103,18 @@ class PersonAgent(mesa.Agent):
         """Perception du Temps 1 (10 §7.1), à partir de l'état de la personne et du contexte
         fourni par le foyer (exigences r_k·P_t, épargne et cible d'épargne).
 
-        Les montants minimaux sont calculés par le moteur (10 §7.3). Le ratio accordé passé,
-        l'enveloppe et l'habitude suivent les allocations (T-010/T-011) : neutres d'ici là.
+        Les montants minimaux sont calculés par le moteur (10 §7.3). L'habitude, le ratio
+        accordé passé et l'enveloppe (accordé au pas précédent + portefeuille) viennent de la
+        dernière allocation ; au pas 0 : aucune habitude, ratio 1, pas d'enveloppe.
         """
         first_sick_month = self.phys.sick and self.phys.episode_months == 0
+        habitual: dict[NeedKind, Money] | None = None
+        grant_ratio: dict[NeedKind, float] = {}
+        envelope: Money | None = None
+        if self.last_demand_set is not None:
+            past = feedback(self.last_demand_set.demands, self.last_allocations)
+            habitual, grant_ratio = past.habitual, past.grant_ratio
+            envelope = past.granted_total + self.econ.wallet_cached
         return Percept(
             step=step,
             person_id=self.person_id,
@@ -113,9 +123,9 @@ class PersonAgent(mesa.Agent):
             active_needs=self.needs.active,
             requirements=dict(requirements),
             amount_min={},
-            expected_grant_ratio={need: 1.0 for need in self.needs.active},
-            envelope=None,
-            habitual=None,
+            expected_grant_ratio={need: grant_ratio.get(need, 1.0) for need in self.needs.active},
+            envelope=envelope,
+            habitual=habitual,
             savings_gap=max(Decimal(0), savings_target - savings),
             ownership_share=ownership_share,
             sick_first_month=first_sick_month,
@@ -133,13 +143,14 @@ class PersonAgent(mesa.Agent):
         """Délègue au ``DecisionEngine`` avec le profil effectif (non modulé en V1) et le
         flux ``decision_ties`` propre à la personne."""
         base = self.profile
-        return self._engine.decide(
+        self.last_demand_set = self._engine.decide(
             percept,
             EffectiveCognitiveProfile.from_profile(base),
             base,
             dict(self.cog.aspiration),
             self.streams["decision_ties"],
         )
+        return self.last_demand_set
 
     def act(self, allocations: Sequence[Allocation]) -> None:
         """Temps 3. Squelette T-006 : l'exécution des actions en écritures est livrée par T-011."""

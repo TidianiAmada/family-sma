@@ -129,7 +129,7 @@ Pour chaque pas t :
 | Enfant | child | 9 | étudiant (inscrit) | — | — |
 | Bébé | baby | 1 | inactif | — | — |
 
-Actifs : pot 50 000, épargne 150 000, dette 0, posés au Ledger par écritures d'ouverture au pas −1 (exclues des NTA). Besoins : niveau 1 ; sécurité = épargne / (3 × dépense mensuelle initiale estimée). Santé 1. ω : père 0,5, mère 0,5 ; chef ONU : père. Poids d'allocation (avant normalisation) : 1 / 1 / 0,8 / 0,7 / 0,6 / 0,6. Toutes ces valeurs sont des **placeholders** : le run est marqué illustratif.
+Actifs : pot 50 000, épargne 150 000, dette 0, posés au Ledger par écritures d'ouverture au pas −1 (exclues des NTA). Besoins : niveau 1 ; sécurité = épargne / (3 × dépense mensuelle initiale estimée). Santé 1. ω : père 0,5, mère 0,5 ; chef ONU : père. Poids d'allocation (avant normalisation) : 1 / 1 / 0,8 / 0,7 / 0,6 / 0,6. Les membres sans salaire de référence ni taux de mise en commun propres (adolescent, enfant, bébé) reçoivent ceux de la clé désignée par `economic_params.default_wage_key` et `household_rules.default_pooling_key` (`young_adult` par défaut) ; ils ne perçoivent un revenu qu'une fois employés. Toutes ces valeurs sont des **placeholders** : le run est marqué illustratif.
 
 ## 6. Input data
 

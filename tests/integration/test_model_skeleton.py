@@ -170,3 +170,12 @@ def test_member_streams_do_not_depend_on_time1_order(baseline_config: Simulation
     assert len(set(draws)) == len(members)
     again = FamilyModel(baseline_config, ScriptedEngine()).households[0].members
     assert [m.streams["decision_ties"].random() for m in reversed(again)] == draws[::-1]
+
+
+def test_members_without_keys_use_configured_defaults(baseline_config: SimulationConfig) -> None:
+    model = FamilyModel(baseline_config, ScriptedEngine())
+    members = model.households[0].members
+    young_adult, teen = members[2], members[3]
+    assert teen.econ.wage_monthly == young_adult.econ.wage_monthly == Decimal("60000.00")
+    assert teen.econ.pooling_rate == young_adult.econ.pooling_rate == 0.5
+    assert teen.econ.labor_supply == 0.0  # étudiant : aucun revenu tant qu'il n'est pas employé

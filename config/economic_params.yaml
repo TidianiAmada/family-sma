@@ -6,6 +6,7 @@ wages:                           # salaire mensuel à plein temps à t0 (× wage
   father: 250000
   mother: 120000
   young_adult: 60000             # quand employé
+default_wage_key: young_adult    # salaire des membres sans wage_key (10 §20.3, décision J1)
 wage_growth_annual: 0.02
 income_shocks:
   formal:   { p_loss_monthly: 0.004, p_find_monthly: 0.05 }

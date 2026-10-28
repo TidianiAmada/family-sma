@@ -351,3 +351,11 @@ def test_two_transitions_from_same_profile_are_refused() -> None:
 def test_member_older_than_its_profile_transition_is_refused() -> None:
     with pytest.raises(ConfigError, match="cède la place"):
         load_config(CONFIG_DIR, {"household_rules.baseline_household.members.3.age": 19})
+
+
+@pytest.mark.parametrize(
+    "path", ["economic_params.default_wage_key", "household_rules.default_pooling_key"]
+)
+def test_default_keys_must_exist(path: str) -> None:
+    with pytest.raises(ConfigError, match="absente"):
+        load_config(CONFIG_DIR, {path: "nobody"})

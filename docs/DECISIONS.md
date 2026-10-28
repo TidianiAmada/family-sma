@@ -63,3 +63,9 @@ V1 (baseline économique) ──[porte V1]──► V2 (cognitive) ──[porte 
 
 - Une case non cochée d'une porte **bloque** la suite (feuille de route §24).
 - La plateforme (piste B) dépend uniquement des tables de sortie du moteur (`04_DATA_MODEL.md`) : elle peut démarrer dès que la porte V1 est verte et progresser en parallèle de V2/V3. Elle ne modifie jamais le moteur (S6, S7).
+
+## 5. Journal des décisions de l'auteur (vivant)
+
+| ID | Date | Décision | Raison | Effet |
+|---|---|---|---|---|
+| J1 | 2026-10-28 | Les membres sans `wage_key` ni entrée `pooling` reçoivent les valeurs d'une clé désignée **dans la configuration** : `economic_params.default_wage_key` et `household_rules.default_pooling_key` (valeur `young_adult`). | 10 §20.3 prescrit « valeurs `young_adult` » ; l'écrire dans le code y introduirait un nom de profil (règle 1). Option A retenue parmi A (clé de configuration), B (clés obligatoires par membre), C (valeur nulle). | Ajoute deux clés à 03 §4 et §6 ; ODD-V1 §5. |

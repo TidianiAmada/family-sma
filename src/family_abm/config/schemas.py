@@ -362,6 +362,7 @@ class LeaveRule(ConfigModel):
 
 class HouseholdRules(ConfigModel):
     baseline_household: BaselineHousehold
+    default_pooling_key: str  # clé de ``pooling`` des membres qui n'y figurent pas (J1)
     pooling: dict[str, Share]
     profile_transitions: tuple[ProfileTransition, ...]
     allocation: AllocationRules
@@ -400,6 +401,11 @@ class HouseholdRules(ConfigModel):
             raise ValueError(
                 f"allocation.weights : manquants {sorted(keys - weights)}, "
                 f"inconnus {sorted(weights - keys)}"
+            )
+        if self.default_pooling_key not in self.pooling:
+            raise ValueError(
+                f"default_pooling_key {self.default_pooling_key!r} absente de pooling "
+                f"({sorted(self.pooling)})"
             )
         for label, refs in (
             ("pooling", set(self.pooling)),
@@ -603,10 +609,13 @@ class SchoolingParams(ConfigModel):
 
 
 class EconomicParams(ConfigModel):
+    """Paramètres économiques (03 §6)."""
+
     currency: str
     wage_scale: float = Field(gt=0.0)
     employment: EmploymentParams
     wages: dict[str, Amount]
+    default_wage_key: str  # clé de ``wages`` des membres sans ``wage_key`` (J1)
     wage_growth_annual: float = Field(gt=-1.0)
     income_shocks: IncomeShocks
     tax: TaxParams
@@ -617,6 +626,15 @@ class EconomicParams(ConfigModel):
     health: HealthParams
     schooling: SchoolingParams
     poverty_line_per_eq: float = Field(gt=0.0)
+
+    @model_validator(mode="after")
+    def _default_wage_key_exists(self) -> Self:
+        if self.default_wage_key not in self.wages:
+            raise ValueError(
+                f"default_wage_key {self.default_wage_key!r} absente de wages "
+                f"({sorted(self.wages)})"
+            )
+        return self
 
 
 # --- configuration résolue

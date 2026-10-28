@@ -114,11 +114,10 @@ class FamilyModel(mesa.Model):
         age_years = age_months / MONTHS_PER_YEAR
         active = scheduler.active_needs(config.needs, age_years)
         economic = config.economic_params
-        wage = (
-            q(economic.wages[member.wage_key] * economic.wage_scale)
-            if member.wage_key is not None
-            else Decimal(0)
-        )
+        rules = config.household_rules
+        # Membres sans clé : valeurs par défaut désignées par la configuration (10 §20.3, J1).
+        wage_key = member.wage_key or economic.default_wage_key
+        pooling_rate = rules.pooling.get(member.key, rules.pooling[rules.default_pooling_key])
         return PersonAgent(
             self,
             person_id=person_id,
@@ -132,9 +131,9 @@ class FamilyModel(mesa.Model):
             school_status=self._initial_school_status(member, age_years),
             econ=EconomicState(
                 employment=member.employment,
-                wage_monthly=wage,
+                wage_monthly=q(economic.wages[wage_key] * economic.wage_scale),
                 labor_supply=1.0 if member.employment in EMPLOYED else 0.0,
-                pooling_rate=config.household_rules.pooling.get(member.key, 0.0),
+                pooling_rate=pooling_rate,
             ),
             phys=PhysicalState(health=1.0),
             # level initial = 1 ; SECURITY = sat_security,0 est posé par T-008 (10 §4).

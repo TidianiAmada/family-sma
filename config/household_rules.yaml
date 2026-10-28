@@ -10,6 +10,7 @@ baseline_household:              # foyer de référence (DOC §3) — âges à t
   head: father                   # pour l'imputation ONU uniquement
   ownership: { father: 0.5, mother: 0.5 }   # parts ω du pot commun (attribution comportementale)
 
+default_pooling_key: young_adult # mise en commun des membres absents de pooling (10 §20.3, J1)
 pooling:                         # part du revenu du travail versée au pot
   father: 1.0
   mother: 0.8

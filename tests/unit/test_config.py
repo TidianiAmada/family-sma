@@ -14,7 +14,7 @@ from family_abm.config.loader import (
     load_registry,
     read_raw_config,
 )
-from family_abm.config.schemas import Provenance, active_profile_fields
+from family_abm.config.schemas import Provenance, SimulationConfig, active_profile_fields
 from family_abm.core.errors import ConfigError
 
 CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
@@ -359,3 +359,33 @@ def test_member_older_than_its_profile_transition_is_refused() -> None:
 def test_default_keys_must_exist(path: str) -> None:
     with pytest.raises(ConfigError, match="absente"):
         load_config(CONFIG_DIR, {path: "nobody"})
+
+
+# --- provenance valeur par valeur (J3)
+
+
+def test_sourced_values_carry_direct_provenance(baseline_config: SimulationConfig) -> None:
+    sources = baseline_config.economic_params.provenance_by_path
+    assert {"wages.father", "wages.mother", "housing.monthly_cost_household"} <= set(sources)
+    assert all(p.provenance is Provenance.DIRECT and "p." in p.source for p in sources.values())
+    assert is_illustrative(baseline_config)  # le reste du fichier reste PLACEHOLDER
+
+
+def test_provenance_path_must_designate_a_parameter() -> None:
+    entry = {"provenance": "DIRECT", "source": "x"}
+    with pytest.raises(ConfigError, match="provenance_by_path"):
+        load_config(CONFIG_DIR, {"economic_params.provenance_by_path.wages.typo": entry})
+
+
+def test_provenance_metadata_is_outside_the_hash() -> None:
+    base = config_hash(load_config(CONFIG_DIR))
+    relabel = {"economic_params.provenance_by_path": {}}
+    assert config_hash(load_config(CONFIG_DIR, relabel)) == base
+
+
+@pytest.mark.parametrize("path", ["wages", "wages.*"])
+def test_provenance_path_must_be_a_single_leaf(path: str) -> None:
+    entry = {"provenance": "DIRECT", "source": "x"}
+    overrides = {"economic_params.provenance_by_path": {path: entry}}
+    with pytest.raises(ConfigError, match="valeur unique"):
+        load_config(CONFIG_DIR, overrides)

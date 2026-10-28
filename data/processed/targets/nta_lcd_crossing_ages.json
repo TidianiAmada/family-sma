@@ -1,0 +1,42 @@
+{
+  "description": "Âges de bascule du déficit du cycle de vie (LCD = C − Yl ; positif = déficit). Repère de contexte pour le contrôle qualitatif P1q (signe du LCD par membre, 40 §3.1) : ni paramètre, ni cible de calibration, jamais l'âge de bascule observé a*_obs de P4 (J4).",
+  "source": "CREFAT (2016), « Profils NTA du Sénégal », diaporama, Saly, 23 juin 2016 ; données ESPS 2 (2011). Référence à vérifier (auteurs, événement).",
+  "data_year": 2011,
+  "national": {
+    "page": 3,
+    "deficit_young": [
+      0,
+      29
+    ],
+    "surplus": [
+      30,
+      63
+    ],
+    "deficit_old_from": 64,
+    "quote": "Groupes d'âge dépendant : 0-29 ans et 64 ans et plus ; Groupe d'âge dégageant du surplus: 30–63 ans"
+  },
+  "by_sex": {
+    "page": 8,
+    "women_surplus": [
+      36,
+      57
+    ],
+    "men_surplus": [
+      27,
+      67
+    ],
+    "quote": "Les femmes génèrent un surplus de 36 à 57 ans […] Chez les hommes, le surplus est généré entre 27 et 67 ans"
+  },
+  "by_area": {
+    "page": 13,
+    "urban_surplus": [
+      30,
+      62
+    ],
+    "rural_surplus": [
+      28,
+      63
+    ],
+    "quote": "Groupes d'âges dépendants en milieu urbain: 0–29 ans et 63 ans et plus ; en milieu rural: 0–28 ans et 64 ans et plus"
+  }
+}

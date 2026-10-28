@@ -1,0 +1,7 @@
+{
+  "description": "Borne supérieure de vraisemblance de la fréquence mensuelle des épisodes de santé simulés (J5) : un épisode coûteux est un sous-ensemble des maladies et blessures déclarées.",
+  "source": "ANSD (2021), Rapport final EHCVM Sénégal, données 2018/2019, Tableau VI-1, p. 58",
+  "data_years": "2018/2019",
+  "share_ill_or_injured_last_30_days": 0.235,
+  "scope": "national, tous âges, déclaratif"
+}

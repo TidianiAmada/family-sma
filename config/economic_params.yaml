@@ -3,8 +3,8 @@ wage_scale: 1.0                  # multiplicateur appliqué à TOUS les salaires
 employment:
   min_work_age: 15               # âge minimal pour passer de STUDENT/DROPPED_OUT à UNEMPLOYED (10 §3)
 wages:                           # salaire mensuel à plein temps à t0 (× wage_scale)
-  father: 250000
-  mother: 120000
+  father: 247202                 # DIRECT — salaire moyen, salariés État/collectivités (EHCVM 2018/19)
+  mother: 94140                  # DIRECT — salaire moyen, salariés du privé (EHCVM 2018/19)
   young_adult: 60000             # quand employé
 default_wage_key: young_adult    # salaire des membres sans wage_key (10 §20.3, décision J1)
 wage_growth_annual: 0.02
@@ -20,10 +20,10 @@ prices:
 consumption_requirements:        # r_k(âge) : coût mensuel pour satisfaction = 1 (FCFA, prix t0)
   food:      { by_age: [[0, 15000], [5, 22000], [13, 30000], [18, 35000], [60, 30000]] }
   health:    { routine_by_age: [[0, 3000], [5, 2000], [18, 3000], [50, 6000]], episode_cost: [[0, 25000], [18, 40000]] }
-  education: { by_age: [[5, 8000], [12, 15000], [16, 25000], [19, 40000]] }   # privé + fournitures
+  education: { by_age: [[5, 5045]] }   # DIRECT — 60 539 FCFA/élève/an ÷ 12, arrondi au franc (EHCVM 2018/19)
   rest:      { by_age: [[0, 0]] }    # non monétaire
 housing:
-  monthly_cost_household: 90000  # loyer + énergie, payé par le pot (COMMITMENT)
+  monthly_cost_household: 69725  # DIRECT dérivé — loyer 53 616 + (électricité 139 964 + eau 53 348) ÷ 12, arrondi
   equivalence_scale: oecd_modified
   equivalence_weights: { first_adult: 1.0, other_adult: 0.5, child: 0.3, adult_age: 14 }
 public:
@@ -48,5 +48,27 @@ schooling:
   entry_age: 6
   exit_age: { secondary: 19, tertiary: 25 }
   drop_after_refused_months: 3   # m_drop (V1 : mécanique)
-poverty_line_per_eq: 35000       # FCFA/mois/équivalent-adulte — PLACEHOLDER (à remplacer par le seuil ANSD/EHCVM)
-provenance: PLACEHOLDER
+poverty_line_per_eq: 35000       # FCFA/mois/équivalent-adulte — PLACEHOLDER (reste-à-vivre, rav_per_eq)
+poverty_line_per_capita_annual: 333440   # DIRECT — seuil national par tête (EHCVM 2018/19) ; taux de pauvreté P6 (J2)
+provenance: PLACEHOLDER          # valeur par défaut du fichier ; exceptions sourcées ci-dessous (J3)
+provenance_by_path:              # provenance valeur par valeur (chemins relatifs à economic_params)
+  wages.father:
+    provenance: DIRECT
+    source: "ANSD (2021), Rapport final EHCVM Sénégal, données 2018/2019, Tableau VII-12, p. 82 : salaire moyen mensuel, État/collectivités locales"
+    note: "colonne Ensemble (non ventilée par sexe ; hommes du public : 258 918) ; salariés seulement ; brut/net non précisé ; père = salarié du public (J3) ; FCFA 2018/2019 non déflatés"
+  wages.mother:
+    provenance: DIRECT
+    source: "ANSD (2021), Rapport final EHCVM Sénégal, données 2018/2019, Tableau VII-12, p. 82 : salaire moyen mensuel, secteur privé"
+    note: "colonne Ensemble (non ventilée par sexe ; femmes du privé : 76 963) ; salariés seulement ; revenu informel non publié ; mère = salariée du privé (J3) ; FCFA 2018/2019 non déflatés"
+  consumption_requirements.education.by_age:
+    provenance: DIRECT
+    source: "ANSD (2021), Rapport final EHCVM Sénégal, données 2018/2019, Tableau V-8, p. 55 : dépense moyenne d'éducation par élève, ensemble, 60 539 FCFA/an"
+    note: "mensualisé (÷ 12) et arrondi au franc ; aucune ventilation par âge ni cycle publiée : montant unique à tous les âges scolaires ; FCFA 2018/2019 non déflatés"
+  housing.monthly_cost_household:
+    provenance: DIRECT
+    source: "ANSD (2021), Rapport final EHCVM Sénégal, données 2018/2019, Graphique VIII-3, p. 100 (loyer moyen des locataires, 53 616 FCFA/mois) ; Tableaux VIII-7 et VIII-8 (électricité 139 964 et eau 53 348 FCFA/an)"
+    note: "valeur DÉRIVÉE : somme de moyennes de sous-populations différentes (loyer des seuls locataires, 17,8 % des ménages ; électricité pour les ménages raccordés) ; énergie et eau mensualisées ; arrondi au franc ; FCFA 2018/2019 non déflatés"
+  poverty_line_per_capita_annual:
+    provenance: DIRECT
+    source: "ANSD (2021), Rapport final EHCVM Sénégal, données 2018/2019, p. v : seuil de pauvreté national, 333 440 FCFA par an et par tête"
+    note: "bien-être = consommation par tête, sans échelle d'équivalence (p. 20) : seuil du taux de pauvreté par tête de la cible P6 (J2)" 

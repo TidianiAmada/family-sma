@@ -43,7 +43,7 @@ GATES_FILE = Path("docs") / "GATES.md"
 GATE_V1_PASSED = re.compile(r"^\s*gate_v1:\s*passed\s*$", re.MULTILINE)
 HASH_EXCLUDED_ROOT_KEYS = frozenset({"seed"})
 """Hors empreinte : un run est identifié par le couple (config_hash, seed) (50 §1, 60)."""
-HASH_EXCLUDED_METADATA = frozenset({"provenance", "source"})
+HASH_EXCLUDED_METADATA = frozenset({"provenance", "source", "provenance_by_path"})
 """Métadonnées sans effet sur la trajectoire, hors empreinte (``data.source`` reste dedans)."""
 
 type Overrides = Mapping[str, Any]
@@ -199,6 +199,21 @@ def _format_validation_error(error: ValidationError) -> str:
     return "configuration invalide :\n" + "\n".join(lines)
 
 
+def _check_provenance_paths(config: SimulationConfig) -> None:
+    """Chaque chemin de ``provenance_by_path`` désigne un paramètre existant (J3)."""
+    tree = config.economic_params.model_dump(mode="json", by_alias=True)
+    for path in config.economic_params.provenance_by_path:
+        try:
+            found = resolve_path(tree, path)
+        except ConfigError as exc:
+            raise ConfigError(f"economic_params.provenance_by_path : {exc}") from exc
+        if len(found) != 1 or isinstance(found[0], dict):
+            raise ConfigError(
+                f"economic_params.provenance_by_path : {path!r} doit désigner une valeur unique "
+                "(scalaire ou table), sans joker"
+            )
+
+
 def _check_sampling_gate(config: SimulationConfig, gates_path: Path) -> None:
     """``invariant_run_sample_rate < 1`` exige la porte V1 verte (10 §12)."""
     if config.checks.invariant_run_sample_rate >= 1:
@@ -235,6 +250,7 @@ def load_config(
         config = SimulationConfig.model_validate_json(json.dumps(tree), strict=True)
     except ValidationError as exc:
         raise ConfigError(_format_validation_error(exc)) from exc
+    _check_provenance_paths(config)
     _check_sampling_gate(config, gates_path or config_dir.parent / GATES_FILE)
     return config
 

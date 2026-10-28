@@ -608,6 +608,14 @@ class SchoolingParams(ConfigModel):
     drop_after_refused_months: int = Field(ge=1)
 
 
+class ParameterProvenance(ConfigModel):
+    """Provenance d'une valeur isolée, quand le bloc qui la contient a une autre provenance."""
+
+    provenance: Provenance
+    source: str
+    note: str | None = None
+
+
 class EconomicParams(ConfigModel):
     """Paramètres économiques (03 §6)."""
 
@@ -626,6 +634,8 @@ class EconomicParams(ConfigModel):
     health: HealthParams
     schooling: SchoolingParams
     poverty_line_per_eq: float = Field(gt=0.0)
+    poverty_line_per_capita_annual: float = Field(gt=0.0)  # taux de pauvreté par tête, P6 (J2)
+    provenance_by_path: dict[str, ParameterProvenance] = Field(default_factory=dict)  # J3
 
     @model_validator(mode="after")
     def _default_wage_key_exists(self) -> Self:

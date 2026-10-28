@@ -55,6 +55,11 @@ def test_file_level_provenance_applies_to_each_profile() -> None:
     assert all(p.provenance is Provenance.PLACEHOLDER for p in config.profiles.values())
 
 
+def test_health_min_for_work_must_be_below_one() -> None:
+    with pytest.raises(ConfigError, match="health_min_for_work"):
+        load_config(CONFIG_DIR, {"economic_params.health.health_min_for_work": 1.0})
+
+
 def test_config_is_frozen() -> None:
     config = load_config(CONFIG_DIR)
     with pytest.raises(pydantic.ValidationError):

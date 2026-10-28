@@ -96,6 +96,7 @@ class FamilyModel(mesa.Model):
             streams = household.streams.for_member(position)
             household.add_member(self._build_person(member, ids[member.key], household_id, streams))
         self._post_opening_balances(household)
+        household.init_security_level()
         return household
 
     def _build_person(
@@ -137,7 +138,7 @@ class FamilyModel(mesa.Model):
                 last_sector=member.employment if member.employment in EMPLOYED else None,
             ),
             phys=PhysicalState(health=1.0),
-            # level initial = 1 ; SECURITY = sat_security,0 est posé par T-008 (10 §4).
+            # level initial = 1 ; SECURITY = sat_security,0, posé après les soldes d'ouverture.
             needs=NeedsState(level=dict.fromkeys(active, 1.0), satisfaction={}, active=active),
             cog=CognitiveState(aspiration=dict.fromkeys(NeedKind, profile.aspiration_init)),
             aff=AffectiveState(),
@@ -180,7 +181,7 @@ class FamilyModel(mesa.Model):
         self._phase(Phase.EVENTS)  # chocs exogènes : T-015
         for household in self.households:
             self._phase(Phase.TIME1, household.household_id)
-            scheduler.time1(household, step)
+            self.events.extend(scheduler.time1(household, step))
         for household in self.households:
             self._phase(Phase.TIME2, household.household_id)
             self.events.extend(scheduler.time2(household, step))

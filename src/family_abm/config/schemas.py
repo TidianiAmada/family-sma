@@ -84,6 +84,17 @@ AgeTable = tuple[tuple[Age, float], ...]
 """Table ``[[âge, valeur], …]`` à âges strictement croissants, constante par morceaux (03 §6)."""
 
 
+def lookup_by_age(table: AgeTable, age_years: float) -> float:
+    """Constante par morceaux (10 §2) : valeur du dernier âge ≤ ``age_years`` ; 0 avant le
+    premier seuil."""
+    value = 0.0
+    for age, entry in table:
+        if age > age_years:
+            break
+        value = entry
+    return value
+
+
 def _check_age_table(table: AgeTable, *, probabilities: bool = False) -> AgeTable:
     if not table:
         raise ValueError("table par âge vide")
@@ -588,7 +599,7 @@ class HealthParams(ConfigModel):
     natural_recovery: Share
     recovery_tolerance: Share
     max_episode_months: int = Field(ge=1)
-    health_min_for_work: Share
+    health_min_for_work: float = Field(ge=0.0, lt=1.0)  # h_min < 1 : capacité définie
     care_paid_by: Literal["household", "gov"]
 
     @field_validator("p_episode_monthly_by_age")

@@ -8,7 +8,8 @@ la collecte (G1). Ce module porte chaque temps ; ``FamilyModel.step`` les encha�
 
 from enum import StrEnum
 
-from family_abm.agents.household import HouseholdAgent
+from family_abm.agents.household import HouseholdAgent, MemberEvent
+from family_abm.agents.person import PersonAgent
 from family_abm.config.schemas import Needs, ProfileTransition
 from family_abm.core.types import MONTHS_PER_YEAR, NeedKind, Step
 from family_abm.model.events import ModelEvent
@@ -34,24 +35,7 @@ def active_needs(needs: Needs, age_years: float) -> frozenset[NeedKind]:
     )
 
 
-def time1(household: HouseholdAgent, step: Step) -> None:
-    """Temps 1 : chaque membre perçoit et décide ; les demandes sont soumises au foyer.
-
-    L'ordre des personnes est tiré dans ``streams["scheduling"]`` ; il est sans effet sur le
-    résultat : les demandes sont arbitrées simultanément au Temps 2 et chaque personne tire
-    dans ses propres flux (01 §4, point 2).
-    """
-    household.start_step()
-    members = household.members
-    for position in household.streams["scheduling"].permutation(len(members)):
-        person = members[int(position)]
-        person.econ.spent_by_need = {}
-        percept = person.perceive(step, household.state.ownership.get(person.person_id, 0.0))
-        household.submit(person.decide(percept))
-
-
-def time2(household: HouseholdAgent, step: Step) -> list[ModelEvent]:
-    """Temps 2 : arbitrage du foyer (revenus, mise en commun, engagements, allocation)."""
+def _logged(household: HouseholdAgent, step: Step, events: list[MemberEvent]) -> list[ModelEvent]:
     return [
         ModelEvent(
             step=step,
@@ -60,8 +44,36 @@ def time2(household: HouseholdAgent, step: Step) -> list[ModelEvent]:
             person_id=event.person_id,
             detail=event.detail,
         )
-        for event in household.run_time2(step)
+        for event in events
     ]
+
+
+def time1(household: HouseholdAgent, step: Step) -> list[ModelEvent]:
+    """Temps 1 : santé et scolarité du mois, puis chaque membre perçoit et décide ; les
+    demandes sont soumises au foyer.
+
+    L'ordre des personnes est tiré dans ``streams["scheduling"]`` ; il est sans effet sur le
+    résultat : les demandes sont arbitrées simultanément au Temps 2 et chaque personne tire
+    dans ses propres flux (01 §4, point 2).
+    """
+    household.start_step()
+    events = household.start_of_month(step)
+    members = household.members
+    for position in household.streams["scheduling"].permutation(len(members)):
+        person = members[int(position)]
+        person.econ.spent_by_need = {}
+        percept = person.perceive(
+            step,
+            household.state.ownership.get(person.person_id, 0.0),
+            household.requirements(person, step),
+        )
+        household.submit(person.decide(percept))
+    return _logged(household, step, events)
+
+
+def time2(household: HouseholdAgent, step: Step) -> list[ModelEvent]:
+    """Temps 2 : arbitrage du foyer (revenus, mise en commun, engagements, allocation)."""
+    return _logged(household, step, household.run_time2(step))
 
 
 def time3(household: HouseholdAgent, step: Step) -> None:
@@ -105,5 +117,16 @@ def age(
                         )
                     )
                     changed = True
-        person.needs.active = active_needs(needs, person.age_years)
+        _activate_needs(household, person, active_needs(needs, person.age_years))
     return events
+
+
+def _activate_needs(
+    household: HouseholdAgent, person: PersonAgent, active: frozenset[NeedKind]
+) -> None:
+    """Besoins actifs recalculés ; un besoin qui devient actif part du niveau initial de
+    10 §4 : 1, sauf SECURITY, qui prend la valeur commune du foyer."""
+    for kind in active - person.needs.active:
+        level = household.security_level() if kind is NeedKind.SECURITY else None
+        person.needs.level[kind] = 1.0 if level is None else level
+    person.needs.active = active

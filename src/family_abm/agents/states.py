@@ -74,6 +74,10 @@ class PhysicalState:
     sick: bool = False
     care_need: Money = Decimal(0)
     labor_capacity: float = 1.0  # [0, 1]
+    # détails d'implémentation de l'épisode de santé (10 §5), non exportés
+    health_pre_episode: float = 1.0
+    cared: bool = False  # soin d'épisode obtenu au premier mois
+    episode_months: int = 0
     fatigue: float = 0.0  # V2
 
 

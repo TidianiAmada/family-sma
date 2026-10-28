@@ -203,10 +203,19 @@ def test_unemployment_counter_and_labor_supply() -> None:
 
 @pytest.mark.parametrize("capacity", [0.0, 0.5])
 def test_labor_capacity_scales_income(capacity: float) -> None:
-    model = _model(TRACE)
+    # Capacité = santé quand h_min = 0 ; ni épisode ni récupération naturelle au pas 0.
+    model = _model(
+        {
+            **TRACE,
+            "economic_params.health.health_min_for_work": 0.0,
+            "economic_params.health.natural_recovery": 0.0,
+            "economic_params.health.p_episode_monthly_by_age": [[0, 0.0]],
+        }
+    )
     father = model.households[0].member("h0000-p0")
-    father.phys.labor_capacity = capacity
+    father.phys.health = capacity
     model.step()
+    assert father.phys.labor_capacity == capacity
     paid = [
         e.amount
         for e in model.ledger.entries(0)

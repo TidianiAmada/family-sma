@@ -88,7 +88,7 @@ Pour chaque pas t :
 **0. Environnement.** Application des événements de scénario datés (perte d'emploi, épisode de santé, choc de prix ou de revenu, changement de politique).
 
 **Temps 1 — perception et demande** (personnes en ordre aléatoire ; l'ordre n'a pas d'effet car les demandes sont arbitrées simultanément) :
-1. mise à jour de la santé (7.4) ;
+1. mise à jour de la santé (7.4), puis de la scolarité liée à l'âge : inscription, fin d'études (7.6) ;
 2. construction de la perception (besoins, exigences r_k, taux d'allocation passé, enveloppe, habitude) ;
 3. décision (7.7) → demandes priorisées + trace.
 
@@ -100,7 +100,7 @@ Pour chaque pas t :
 
 **Temps 3 — action et comptabilité** :
 8. consommation financée par le pot (au bénéfice nominatif de chaque membre), complément depuis les portefeuilles, consommation publique en nature (7.6) ;
-9. mise à jour des satisfactions et niveaux de besoins, de la scolarité ;
+9. mise à jour des satisfactions et niveaux de besoins, et de la scolarité selon le paiement des frais (abandon) ;
 10. calcul NTA depuis le Ledger (7.10–7.11), vérification des invariants (7.12) — une violation arrête le run ;
 11. observation (collecte) ; **puis** vieillissement d'un mois et transitions de profil (7.1).
 
@@ -147,13 +147,13 @@ Revenu brut : `Yl = wage × W_t × labor_supply × labor_capacity × m`, avec m 
 Impôt à la source : 10 % du revenu formel, 0 % informel. Mise en commun : `pooling_rate × (Yl − impôt)` vers le pot ; le reste reste au portefeuille. Ordre des écritures : pour chaque personne payée, `LABOR_INCOME` puis `TAX` ; les `POOLING` suivent, après tous les revenus (10 §8.1). Les salaires sont revalorisés une fois par an, `W_t = (1 + g)^⌊t/12⌋`. Les montants sont arrondis au centime (arrondi bancaire) à chaque écriture.
 
 ### 7.4 Santé
-Hors épisode : probabilité mensuelle d'épisode selon l'âge (0,06 / 0,03 / 0,02 / 0,04 à 0, 5, 18, 50 ans) ; gravité ~ N(0,25 ; 0,10) bornée [0,05 ; 0,9] retranchée à la santé ; coût de l'épisode (25 000 FCFA avant 18 ans, 40 000 ensuite, × P_t) demandé une fois. Récupération : +0,15/mois si soigné, +0,03 sinon ; fin d'épisode quand la santé revient à 0,05 du niveau antérieur ou après 6 mois. Hors épisode : +0,01/mois jusqu'à 1. Capacité de travail : seuil h_min = 0,3.
+Hors épisode : probabilité mensuelle d'épisode selon l'âge (0,06 / 0,03 / 0,02 / 0,04 à 0, 5, 18, 50 ans) ; gravité ~ N(0,25 ; 0,10) bornée [0,05 ; 0,9] retranchée à la santé ; coût de l'épisode (25 000 FCFA avant 18 ans, 40 000 ensuite, × P_t) demandé une fois. Récupération : +0,15/mois si soigné, +0,03 sinon ; fin d'épisode quand la santé revient à 0,05 du niveau antérieur ou après 6 mois. Hors épisode : +0,01/mois jusqu'à 1. Capacité de travail : `clip((santé − h_min)/(1 − h_min), 0, 1)`, h_min = 0,3, recalculée à chaque pas, y compris aux pas de survenue et de guérison (décision J12). Le coût de l'épisode est indexé sur P_t au mois de survenue. Chaque personne tire à chaque pas, quel que soit son état, une uniforme (survenue) puis une normale (gravité) dans son flux `health` : le nombre de tirages ne dépend pas de la trajectoire.
 
 ### 7.5 Besoins
-`level_k,t = ρ_k·level_k,t−1 + (1 − ρ_k)·sat_k,t` avec ρ = 0,5 (alimentation, repos), 0,8 (santé), 0,9 (éducation, logement, sécurité). Satisfactions : alimentation et soins de routine = dépense / exigence par âge (bornée à 1) ; éducation = 1 si frais payés, 0 sinon ; logement = part payée / part due ; repos = `clip(1 − 0,6·max(0, labor_supply − 0,8), 0, 1)` ; santé en épisode = 1 si soigné, sinon 0,2 × ratio de routine ; sécurité = épargne / (3 × dépense mensuelle moyenne sur 12 mois), commune au foyer.
+`level_k,t = ρ_k·level_k,t−1 + (1 − ρ_k)·sat_k,t` avec ρ = 0,5 (alimentation, repos), 0,8 (santé), 0,9 (éducation, logement, sécurité). Satisfactions : alimentation et soins de routine = dépense / exigence par âge (bornée à 1) ; éducation = 1 si frais payés, 0 sinon ; logement = part payée / part due ; repos = `clip(1 − 0,6·max(0, labor_supply − 0,8) − fatigue, 0, 1)` (fatigue = 0 en V1) ; santé en épisode = 1 si soigné, sinon 0,2 × ratio de routine ; sécurité = épargne / (3 × dépense mensuelle moyenne sur 12 mois), commune au foyer ; au pas 0, la dépense de référence est la somme du logement et des exigences d'alimentation, de soins de routine et de frais d'éducation des inscrits, et le niveau initial de sécurité vaut cette satisfaction. Un besoin qui devient actif avec l'âge part du niveau 1, sauf la sécurité, qui prend la valeur commune du foyer. Exigences : r_k(âge) × P_t, tables constantes par morceaux ; une exigence nulle est réputée satisfaite. Logement : coût du foyer × P_t réparti selon l'échelle OCDE modifiée (chef 1 ; autres membres de 14 ans et plus 0,5 ; plus jeunes 0,3), au centime, le dernier membre (ordre des identifiants) recevant le résidu d'arrondi.
 
 ### 7.6 Scolarité et consommation publique
-Inscription à 6 ans ; frais mensuels indivisibles par âge ; trois refus consécutifs ⇒ abandon ; sortie à 25 ans. Consommation publique en nature (Cg) : éducation (6 000 / 9 000 / 12 000 FCFA selon l'âge) pour tout inscrit ; santé de routine (1 000 à 3 000 selon l'âge).
+Inscription au premier mois où l'âge atteint 6 ans, frais demandés dès ce mois (décision J11) ; frais mensuels indivisibles par âge ; poursuite automatique après le secondaire (19 ans) ; trois refus consécutifs ⇒ abandon ; fin d'études à 25 ans. Consommation publique en nature (Cg) : éducation (6 000 / 9 000 / 12 000 FCFA selon l'âge) pour tout inscrit ; santé de routine (1 000 à 3 000 selon l'âge).
 
 ### 7.7 Décision (satisficing)
 1. Besoins demandables : actifs, monétaires, hors logement (engagement du foyer), sous réserve des capacités ; épargne seulement pour les propriétaires (ω > 0).

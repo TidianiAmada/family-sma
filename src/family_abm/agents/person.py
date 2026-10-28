@@ -22,6 +22,8 @@ from family_abm.core.rng import RngStreams
 from family_abm.core.types import (
     MONTHS_PER_YEAR,
     HouseholdId,
+    Money,
+    NeedKind,
     PersonId,
     Role,
     SchoolStatus,
@@ -86,11 +88,14 @@ class PersonAgent(mesa.Agent):
     def age_years(self) -> float:
         return self.age_months / MONTHS_PER_YEAR
 
-    def perceive(self, step: Step, ownership_share: float) -> Percept:
+    def perceive(
+        self, step: Step, ownership_share: float, requirements: Mapping[NeedKind, Money]
+    ) -> Percept:
         """Perception du Temps 1 (10 §7.1).
 
-        Squelette T-006 : les exigences monétaires r_k, montants minimaux, enveloppe,
-        habitude et écart d'épargne sont renseignés par T-008 (besoins) et T-010 (épargne).
+        ``requirements`` : exigences r_k(âge)·P_t calculées par le foyer (T-008). Montants
+        minimaux (T-009), enveloppe et habitude (T-009/T-010) et écart d'épargne (T-010)
+        restent à renseigner.
         """
         return Percept(
             step=step,
@@ -98,14 +103,14 @@ class PersonAgent(mesa.Agent):
             age_years=self.age_years,
             needs_level=dict(self.needs.level),
             active_needs=self.needs.active,
-            requirements={},
+            requirements=dict(requirements),
             amount_min={},
             expected_grant_ratio={need: 1.0 for need in self.needs.active},
             envelope=None,
             habitual=None,
             savings_gap=Decimal(0),
             ownership_share=ownership_share,
-            sick_first_month=False,
+            sick_first_month=self.phys.sick and self.phys.episode_months == 0,
             school_enrolled=self.school_status is SchoolStatus.ENROLLED,
         )
 

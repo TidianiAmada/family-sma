@@ -8,6 +8,7 @@ produit la même trajectoire qu'il soit simulé seul ou dans une population (01 
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Literal
 
 import mesa
@@ -21,13 +22,17 @@ from family_abm.core.types import (
     EmploymentStatus,
     HouseholdId,
     Money,
+    NeedKind,
     PersonId,
+    SchoolStatus,
     Step,
+    q,
 )
 from family_abm.decision.engine import Allocation, DemandSet
 from family_abm.economy import actions, labor, prices
 from family_abm.economy.accounts import AccountId, AccountKind
 from family_abm.economy.ledger import Ledger, LedgerEntry
+from family_abm.health import health
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,7 +44,14 @@ class MemberEvent:
     """
 
     person_id: PersonId
-    type: Literal["job_loss", "job_found"]  # types endogènes de 04 §2.7
+    type: Literal[
+        "job_loss",
+        "job_found",
+        "health_episode",
+        "recovered",
+        "school_enrolled",
+        "school_completed",
+    ]  # types endogènes de 04 §2.7
     detail: Mapping[str, str] = field(default_factory=dict)
 
 
@@ -90,6 +102,113 @@ class HouseholdAgent(mesa.Agent):
         """Vide les demandes et allocations du pas précédent."""
         self.demand_sets = {}
         self.allocations = {}
+
+    def start_of_month(self, step: Step) -> list[MemberEvent]:
+        """Début du Temps 1 : santé (10 §5) puis scolarité liée à l'âge (10 §6).
+
+        Différés : l'abandon scolaire après refus des frais et ``refused_edu_months`` suivent
+        l'exécution des allocations (T-011, 10 §9) ; ``health.care_paid_by = gov`` et les
+        chocs de prix sont branchés avec les scénarios (T-015).
+        """
+        p_t = prices.price_index(step, self.economic)
+        events: list[MemberEvent] = []
+        for person in self.members:
+            events.extend(self._update_health(person, p_t))
+            events.extend(self._update_school(person))
+        return events
+
+    def _update_health(self, person: PersonAgent, p_t: Decimal) -> list[MemberEvent]:
+        economic = self.economic
+        phys = person.phys
+        update = health.update_health(
+            health.HealthState(
+                health=phys.health,
+                sick=phys.sick,
+                cared=phys.cared,
+                episode_months=phys.episode_months,
+                health_pre_episode=phys.health_pre_episode,
+                care_need=phys.care_need,
+                labor_capacity=phys.labor_capacity,
+            ),
+            age_years=person.age_years,
+            cfg=economic.health,
+            episode_cost=economic.consumption_requirements.health.episode_cost,
+            price_index=p_t,
+            draw=health.draw_health(person.streams["health"], economic.health),
+        )
+        new = update.state
+        phys.health, phys.sick, phys.cared = new.health, new.sick, new.cared
+        phys.episode_months = new.episode_months
+        phys.health_pre_episode = new.health_pre_episode
+        phys.care_need, phys.labor_capacity = new.care_need, new.labor_capacity
+        if update.event == "health_episode":
+            detail = {"severity": repr(update.severity)}
+            return [MemberEvent(person.person_id, "health_episode", detail)]
+        if update.event == "recovered":
+            return [MemberEvent(person.person_id, "recovered")]
+        return []
+
+    def _update_school(self, person: PersonAgent) -> list[MemberEvent]:
+        before = person.school_status
+        after = actions.school_status_by_age(before, person.age_years, self.economic.schooling)
+        person.school_status = after
+        if after is before:
+            return []
+        if after is SchoolStatus.ENROLLED:
+            return [MemberEvent(person.person_id, "school_enrolled")]
+        return [MemberEvent(person.person_id, "school_completed")]
+
+    def requirements(self, person: PersonAgent, step: Step) -> dict[NeedKind, Money]:
+        """Exigences r_k·P_t de la personne, restreintes à ses besoins actifs (10 §4)."""
+        required = self._all_requirements(person, step)
+        return {need: r for need, r in required.items() if need in person.needs.active}
+
+    def _all_requirements(self, person: PersonAgent, step: Step) -> dict[NeedKind, Money]:
+        return actions.monthly_requirements(
+            person.age_years,
+            school_enrolled=person.school_status is SchoolStatus.ENROLLED,
+            price_index=prices.price_index(step, self.economic),
+            requirements=self.economic.consumption_requirements,
+        )
+
+    def housing_shares(self, step: Step) -> dict[PersonId, Money]:
+        """Parts du coût du logement × P_t selon l'échelle OCDE modifiée (10 §4, §9)."""
+        housing = self.economic.housing
+        cost = q(
+            Decimal(repr(housing.monthly_cost_household)) * prices.price_index(step, self.economic)
+        )
+        weights = actions.equivalence_weights(
+            {p.person_id: p.age_years for p in self.members},
+            self.state.head_id,
+            housing.equivalence_weights,
+        )
+        return actions.housing_shares(cost, weights)
+
+    def initial_spending(self) -> Money:
+        """Dépense mensuelle du pas 0 qui tient lieu de ``spend_avg_12m`` : logement +
+        Σ (alimentation + soins de routine + frais d'éducation si inscrit), à P_0 (10 §4)."""
+        total = sum(self.housing_shares(0).values(), Decimal(0))
+        for person in self.members:  # « r_edu si inscrit » : sans filtre par besoin actif
+            total += sum(self._all_requirements(person, 0).values(), Decimal(0))
+        return total
+
+    def security_level(self) -> float | None:
+        """Niveau courant du besoin SECURITY, commun au foyer (None si aucun membre ne l'a)."""
+        for person in self.members:
+            if NeedKind.SECURITY in person.needs.level:
+                return person.needs.level[NeedKind.SECURITY]
+        return None
+
+    def init_security_level(self) -> None:
+        """Niveau initial du besoin SECURITY = ``sat_security,0`` (10 §4), commun au foyer."""
+        sat = actions.security_satisfaction(
+            self.ledger.balance(self.account(AccountKind.HOUSEHOLD_SAVINGS)),
+            self.initial_spending(),
+            self.rules.savings.target_buffer_months,
+        )
+        for person in self.members:
+            if NeedKind.SECURITY in person.needs.active:
+                person.needs.level[NeedKind.SECURITY] = sat
 
     def submit(self, demand_set: DemandSet) -> None:
         self.demand_sets[demand_set.person_id] = demand_set

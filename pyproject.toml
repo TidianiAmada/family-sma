@@ -5,6 +5,7 @@ description = "Simulation multi-agents d'un foyer sénégalais mesurée par les 
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "mesa>=3.0,<4",
+    "networkx>=3.0",  # importé par mesa 3.5 sans être déclaré dans ses dépendances
     "numpy>=2.0",
     "pydantic>=2.7,<3",
     "pyyaml>=6.0",
@@ -49,6 +50,20 @@ python_version = "3.12"
 strict = true
 files = ["src"]
 mypy_path = "src"
+
+# Mesa 3.5 n'est pas typé (pas de py.typed) : import toléré, et héritage autorisé dans les
+# seuls modules qui dérivent de mesa.Agent / mesa.Model.
+[[tool.mypy.overrides]]
+module = ["mesa", "mesa.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "family_abm.agents.person",
+    "family_abm.agents.household",
+    "family_abm.model.family_model",
+]
+disallow_subclassing_any = false
 
 # --------------------------------------------------------------------------- pytest
 [tool.pytest.ini_options]

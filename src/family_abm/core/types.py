@@ -24,6 +24,9 @@ type RunId = str
 type ConfigHash = str
 """SHA-256 de la configuration résolue (JSON canonique)."""
 
+MONTHS_PER_YEAR = 12
+"""Conversion années ↔ mois (pas mensuel, 03 §1)."""
+
 MONEY_QUANTUM = Decimal("0.01")
 """Quantum monétaire du ``Ledger`` (convention de mesure, pas un paramètre du modèle)."""
 WEIGHT_SUM_TOLERANCE = 1e-12

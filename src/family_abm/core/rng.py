@@ -48,8 +48,16 @@ class RngStreams:
 
     def for_household(self, household_index: int) -> "RngStreams":
         """Flux propres au foyer ``household_index`` (équivalent à ``spawn`` indexé)."""
-        if household_index < 0:
-            raise ValueError(f"indice de foyer négatif : {household_index}")
+        return self._child(household_index)
+
+    def for_member(self, member_index: int) -> "RngStreams":
+        """Flux propres au membre ``member_index`` d'un foyer : un tirage d'une personne ne
+        dépend pas de l'ordre de passage des autres au Temps 1 (01 §4, point 2)."""
+        return self._child(member_index)
+
+    def _child(self, index: int) -> "RngStreams":
+        if index < 0:
+            raise ValueError(f"indice de sous-flux négatif : {index}")
         child = RngStreams(self.seed)
-        child._spawn_key = (*self._spawn_key, household_index)
+        child._spawn_key = (*self._spawn_key, index)
         return child

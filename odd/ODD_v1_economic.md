@@ -138,7 +138,7 @@ Aucune donnée externe obligatoire en V1 (source `synthetic`). Les scénarios fo
 ## 7. Submodels
 
 ### 7.1 Vieillissement et transitions de profil
-`age_months` augmente de 1 par pas. Le profil change lorsque l'âge atteint 5 ans (bébé → enfant), 13 ans (enfant → adolescent), 18 ans (adolescent → jeune adulte) ; θ est alors réinitialisé à l'aspiration initiale du nouveau profil. Les besoins actifs suivent les plages d'âge (`active_ages`).
+`age_months` augmente de 1 par pas. Le profil change lorsque l'âge atteint 5 ans (bébé → enfant), 13 ans (enfant → adolescent), 18 ans (adolescent → jeune adulte) ; θ est alors réinitialisé à l'aspiration initiale du nouveau profil. Les besoins actifs suivent les plages d'âge (`active_ages`), lues comme des intervalles semi-ouverts [min, max[. Le vieillissement et les transitions ont lieu en fin de pas, après la collecte : les tables d'un pas portent l'âge et le profil en vigueur pendant ce pas.
 
 ### 7.2 Travail et emploi
 Revenu brut : `Yl = wage × W_t × labor_supply × labor_capacity × m`, avec m = 1 (formel) ou m ~ LogNormal(−σ²/2, σ), σ = 0,15 (informel). Transitions mensuelles : perte d'emploi p = 0,004 (formel) / 0,010 (informel) ; retour à l'emploi p = 0,05 / 0,10 selon le secteur du dernier emploi (informel si jamais employé), formel avec probabilité 0,2. Fin d'études (25 ans) ⇒ chômeur en recherche. Seules les personnes dotées de la capacité `work` perçoivent un revenu.

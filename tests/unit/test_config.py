@@ -290,8 +290,10 @@ def test_wildcard_skips_branches_without_the_rest_of_the_path() -> None:
 
 
 def test_wildcard_over_a_list() -> None:
-    config = load_config(CONFIG_DIR, {"household_rules.baseline_household.members.*.age": 30})
-    assert {m.age for m in config.household_rules.baseline_household.members} == {30}
+    path = "household_rules.baseline_household.members.*.employment"
+    config = load_config(CONFIG_DIR, {path: "inactive"})
+    members = config.household_rules.baseline_household.members
+    assert {m.employment.value for m in members} == {"inactive"}
 
 
 @pytest.mark.parametrize(
@@ -323,3 +325,29 @@ def test_config_hash_ignores_output_dir_and_provenance() -> None:
 def test_config_hash_includes_data_source() -> None:
     base = config_hash(load_config(CONFIG_DIR))
     assert config_hash(load_config(CONFIG_DIR, {"data.source": "ehcvm"})) != base
+
+
+# --- transitions de profil (revue T-006)
+
+
+def test_cyclic_profile_transitions_are_refused() -> None:
+    cycle = [
+        {"from": "baby", "to": "child", "at_age": 5},
+        {"from": "child", "to": "baby", "at_age": 5},
+    ]
+    with pytest.raises(ConfigError, match="cycle"):
+        load_config(CONFIG_DIR, {"household_rules.profile_transitions": cycle})
+
+
+def test_two_transitions_from_same_profile_are_refused() -> None:
+    rules = [
+        {"from": "baby", "to": "child", "at_age": 5},
+        {"from": "baby", "to": "adolescent", "at_age": 6},
+    ]
+    with pytest.raises(ConfigError, match="plusieurs transitions"):
+        load_config(CONFIG_DIR, {"household_rules.profile_transitions": rules})
+
+
+def test_member_older_than_its_profile_transition_is_refused() -> None:
+    with pytest.raises(ConfigError, match="cède la place"):
+        load_config(CONFIG_DIR, {"household_rules.baseline_household.members.3.age": 19})

@@ -371,6 +371,27 @@ class HouseholdRules(ConfigModel):
     young_adult_can_leave: bool
     leave_rule: LeaveRule
 
+    @field_validator("profile_transitions")
+    @classmethod
+    def _deterministic_and_acyclic(
+        cls, transitions: tuple[ProfileTransition, ...]
+    ) -> tuple[ProfileTransition, ...]:
+        """Au plus une règle par profil de départ, et aucun cycle (sinon le vieillissement
+        ne termine pas)."""
+        successor: dict[str, str] = {}
+        for rule in transitions:
+            if rule.from_ in successor:
+                raise ValueError(f"plusieurs transitions depuis le profil {rule.from_!r}")
+            successor[rule.from_] = rule.to
+        for start in successor:
+            seen, current = {start}, successor[start]
+            while current in successor:
+                if current in seen:
+                    raise ValueError(f"cycle de transitions de profil passant par {current!r}")
+                seen.add(current)
+                current = successor[current]
+        return transitions
+
     @model_validator(mode="after")
     def _member_references(self) -> Self:
         keys = {m.key for m in self.baseline_household.members}
@@ -636,6 +657,14 @@ class SimulationConfig(ConfigModel):
             for name in (transition.from_, transition.to):
                 if name not in self.profiles:
                     raise ValueError(f"profile_transitions : profil inconnu {name!r}")
+        for member in rules.baseline_household.members:
+            for transition in rules.profile_transitions:
+                if transition.from_ == member.profile and member.age >= transition.at_age:
+                    raise ValueError(
+                        f"membre {member.key!r} : {member.age} ans, mais le profil "
+                        f"{member.profile!r} cède la place à {transition.to!r} à "
+                        f"{transition.at_age} ans"
+                    )
         return self
 
 
